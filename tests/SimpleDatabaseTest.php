@@ -1,8 +1,7 @@
 <?php
 
-namespace Assertis\Util;
+namespace Assertis\SimpleDatabase;
 
-use Assertis\SimpleDatabase\SimpleDatabase;
 use PDOMock;
 use PDOStatementMock;
 use PHPUnit_Framework_MockObject_MockObject;
