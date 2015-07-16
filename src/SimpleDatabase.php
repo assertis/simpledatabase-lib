@@ -271,7 +271,13 @@ class SimpleDatabase {
         return true;
     }
 
-    public function replaceMultiple($table, $datasets) {
+    /**
+     * @param string $table
+     * @param array $datasets
+     * @return bool
+     * @throws SimpleDatabaseExecuteException
+     */
+    public function replaceMultiple($table, array $datasets) {
         $keys = $this->getInsertKeys($datasets[0]);
 
         $placeholders = [];
