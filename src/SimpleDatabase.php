@@ -213,4 +213,88 @@ class SimpleDatabase {
     protected function getLogger() {
         return $this->logger;
     }
+
+    /**
+     * @param array $data
+     * @return string
+     */
+    private function getInsertKeys(array $data) {
+        return join(', ', array_keys($data));
+    }
+
+    /**
+     * @param array $data
+     * @return string
+     */
+    private function getInsertPlaceholders(array $data) {
+        return join(', ', array_map(function($key){
+            return ':'.$key;
+        }, array_keys($data)));
+    }
+
+    /**
+     * @param array $data
+     * @return string
+     */
+    private function getInsertData(array $data) {
+        return join(', ', array_map(function($item){
+            return $this->getPdo()->quote($item);
+        }, $data));
+    }
+
+    /**
+     * @param string $table
+     * @param array $data
+     * @return string
+     */
+    public function insert($table, array $data) {
+        $keys = $this->getInsertKeys($data);
+        $placeholders = $this->getInsertPlaceholders($data);
+        $sql = "INSERT INTO {$table} ({$keys}) VALUES ({$placeholders});";
+        $this->executeQuery($sql, $data);
+
+        return $this->getLastInsertId();
+    }
+
+    /**
+     * @param string $table
+     * @param array $data
+     * @return bool
+     * @throws SimpleDatabaseExecuteException
+     */
+    public function replace($table, array $data) {
+        $keys = $this->getInsertKeys($data);
+        $placeholders = $this->getInsertPlaceholders($data);
+        $sql = "REPLACE INTO {$table} ({$keys}) VALUES ({$placeholders});";
+        $this->executeQuery($sql, $data);
+
+        return true;
+    }
+
+    public function replaceMultiple($table, $datasets) {
+        $keys = $this->getInsertKeys($datasets[0]);
+
+        $placeholders = [];
+        foreach ($datasets as $dataset) {
+            $placeholders[] = $this->getInsertData($dataset);
+        }
+
+        $placeholders = join('), (', $placeholders);
+
+        //$placeholders = $this->getInsertPlaceholders($data);
+        $sql = "REPLACE INTO {$table} ({$keys}) VALUES ({$placeholders});";
+        $this->executeQuery($sql);
+
+        return true;
+    }
+
+    /**
+     * @param string $table
+     * @return PDOStatement
+     * @throws SimpleDatabaseExecuteException
+     */
+    public function truncateTable($table) {
+        return $this->executeQuery("TRUNCATE {$table};");
+    }
+
 }
