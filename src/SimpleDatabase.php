@@ -273,22 +273,54 @@ class SimpleDatabase {
 
     /**
      * @param string $table
-     * @param array $datasets
+     * @param array $entities
      * @return bool
      * @throws SimpleDatabaseExecuteException
      */
-    public function replaceMultiple($table, array $datasets) {
-        $keys = $this->getInsertKeys($datasets[0]);
+    public function replaceMultiple($table, array $entities) {
+        $keys = $this->getInsertKeys($entities[0]);
 
-        $placeholders = [];
-        foreach ($datasets as $dataset) {
-            $placeholders[] = $this->getInsertData($dataset);
+        $entityValues = [];
+        foreach ($entities as $entity) {
+            $entityValues[] = $this->getInsertData($entity);
         }
 
-        $placeholders = join('), (', $placeholders);
+        $values = join('), (', $entityValues);
 
-        //$placeholders = $this->getInsertPlaceholders($data);
-        $sql = "REPLACE INTO {$table} ({$keys}) VALUES ({$placeholders});";
+        $sql = "REPLACE INTO {$table} ({$keys}) VALUES ({$values});";
+        $this->executeQuery($sql);
+
+        return true;
+    }
+
+    /**
+     * @param array $data
+     * @return string
+     */
+    private function getDeleteData(array $data) {
+        $out = [];
+
+        array_walk($data, function($value, $key) use (&$out) {
+            $out[] = "{$key} = ".$this->getPdo()->quote($value);
+        });
+
+        return join(' AND ', $out);
+    }
+
+    /**
+     * @param string $table
+     * @param array $entities
+     * @return bool
+     * @throws SimpleDatabaseExecuteException
+     */
+    public function deleteMultiple($table, array $entities) {
+        $entityValues = array_map([ $this, 'getDeleteData'], $entities);
+
+        if (0 === count($entityValues)) {
+            return true;
+        }
+
+        $sql = "DELETE FROM {$table} WHERE (".join(') OR (', $entityValues).');';
         $this->executeQuery($sql);
 
         return true;
