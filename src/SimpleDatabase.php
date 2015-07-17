@@ -219,7 +219,7 @@ class SimpleDatabase {
      * @return string
      */
     private function getInsertKeys(array $data) {
-        return join(', ', array_keys($data));
+        return join(',', array_keys($data));
     }
 
     /**
@@ -227,7 +227,7 @@ class SimpleDatabase {
      * @return string
      */
     private function getInsertPlaceholders(array $data) {
-        return join(', ', array_map(function($key){
+        return join(',', array_map(function($key){
             return ':'.$key;
         }, array_keys($data)));
     }
@@ -237,7 +237,7 @@ class SimpleDatabase {
      * @return string
      */
     private function getInsertData(array $data) {
-        return join(', ', array_map(function($item){
+        return join(',', array_map(function($item){
             return $this->getPdo()->quote($item);
         }, $data));
     }
@@ -301,7 +301,7 @@ class SimpleDatabase {
         $out = [];
 
         array_walk($data, function($value, $key) use (&$out) {
-            $out[] = "{$key} = ".$this->getPdo()->quote($value);
+            $out[] = "{$key}=".$this->getPdo()->quote($value);
         });
 
         return join(' AND ', $out);
