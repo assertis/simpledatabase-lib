@@ -219,7 +219,9 @@ class SimpleDatabase {
      * @return string
      */
     private function getInsertKeys(array $data) {
-        return join(',', array_keys($data));
+        return join(',', array_map(function($identifier){
+            return '`'.str_replace('.', '`.`', $identifier).'`';
+        }, array_keys($data)));
     }
 
     /**
@@ -238,7 +240,15 @@ class SimpleDatabase {
      */
     private function getInsertData(array $data) {
         return join(',', array_map(function($item){
-            return $this->getPdo()->quote($item);
+            if (is_array($item)) {
+                return $this->getPdo()->quote(join(',', $item));
+            }
+            elseif (is_null($item)) {
+                return 'NULL';
+            }
+            else {
+                return $this->getPdo()->quote($item);
+            }
         }, $data));
     }
 
