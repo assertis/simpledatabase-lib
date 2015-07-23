@@ -376,4 +376,18 @@ class SimpleDatabase {
         return $this->executeQuery("TRUNCATE {$table};");
     }
 
+    /**
+     * @throws SimpleDatabaseExecuteException
+     */
+    public function disableForeignKeyChecks() {
+        $this->executeQuery("SET foreign_key_checks = 0;");
+    }
+
+    /**
+     * @throws SimpleDatabaseExecuteException
+     */
+    public function enableForeignKeyChecks() {
+        $this->executeQuery("SET foreign_key_checks = 1;");
+    }
+
 }
