@@ -24,14 +24,20 @@ class SimpleDatabase {
      * @var LoggerInterface
      */
     private $logger;
+    /**
+     * @var bool
+     */
+    private $logQueries;
 
     /**
-     * @param PDO             $pdo
+     * @param PDO $pdo
      * @param LoggerInterface $logger
+     * @param bool $logQueries
      */
-    public function __construct(PDO $pdo, LoggerInterface $logger) {
+    public function __construct(PDO $pdo, LoggerInterface $logger, $logQueries=false) {
         $this->pdo = $pdo;
         $this->logger = $logger;
+        $this->logQueries = $logQueries;
     }
 
     /**
@@ -60,7 +66,10 @@ class SimpleDatabase {
      */
     public function executeQuery($sql, $params = []) {
         $query = $this->getPdo()->prepare($sql);
-        $this->getLogger()->debug('Executing query ' . self::resolveQuery($sql, $params));
+
+        if ($this->logQueries) {
+            $this->getLogger()->debug('Executing query ' . self::resolveQuery($sql, $params));
+        }
 
         if (!$query->execute($params)) {
             $errorInfo = $query->errorInfo();
@@ -268,6 +277,28 @@ class SimpleDatabase {
 
     /**
      * @param string $table
+     * @param array $entities
+     * @return bool
+     * @throws SimpleDatabaseExecuteException
+     */
+    public function insertMultiple($table, array $entities) {
+        $keys = $this->getInsertKeys($entities[0]);
+
+        $entityValues = [];
+        foreach ($entities as $entity) {
+            $entityValues[] = $this->getInsertData($entity);
+        }
+
+        $values = join("), \n(", $entityValues);
+
+        $sql = "INSERT INTO {$table} ({$keys}) VALUES ({$values});";
+        $this->executeQuery($sql);
+
+        return true;
+    }
+
+    /**
+     * @param string $table
      * @param array $data
      * @return bool
      * @throws SimpleDatabaseExecuteException
@@ -295,7 +326,7 @@ class SimpleDatabase {
             $entityValues[] = $this->getInsertData($entity);
         }
 
-        $values = join('), (', $entityValues);
+        $values = join("), \n(", $entityValues);
 
         $sql = "REPLACE INTO {$table} ({$keys}) VALUES ({$values});";
         $this->executeQuery($sql);
