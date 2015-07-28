@@ -30,11 +30,11 @@ class SimpleDatabase {
     private $logQueries;
 
     /**
-     * @param PDO $pdo
+     * @param PDO             $pdo
      * @param LoggerInterface $logger
-     * @param bool $logQueries
+     * @param bool            $logQueries
      */
-    public function __construct(PDO $pdo, LoggerInterface $logger, $logQueries=false) {
+    public function __construct(PDO $pdo, LoggerInterface $logger, $logQueries = false) {
         $this->pdo = $pdo;
         $this->logger = $logger;
         $this->logQueries = $logQueries;
@@ -64,7 +64,7 @@ class SimpleDatabase {
      * @return PDOStatement
      * @throws SimpleDatabaseExecuteException
      */
-    public function executeQuery($sql, $params = []) {
+    public function executeQuery($sql, $params = [ ]) {
         $query = $this->getPdo()->prepare($sql);
 
         if ($this->logQueries) {
@@ -73,7 +73,8 @@ class SimpleDatabase {
 
         if (!$query->execute($params)) {
             $errorInfo = $query->errorInfo();
-            $this->getLogger()->error("Could not execute query {$sql} with parameters " . json_encode($params) . ": {$errorInfo['0']}/{$errorInfo['1']} - {$errorInfo[2]}.");
+            $this->getLogger()->error("Could not execute query {$sql} with parameters " . json_encode($params) .
+                                      ": {$errorInfo['0']}/{$errorInfo['1']} - {$errorInfo[2]}.");
             throw new SimpleDatabaseExecuteException($errorInfo, $sql, $params);
         }
 
@@ -90,14 +91,13 @@ class SimpleDatabase {
      * @throws NoRecordsFoundException
      * @throws SimpleDatabaseExecuteException
      */
-    public function getColumn($sql, array $params = [], $columnId = 0, $optional = false) {
+    public function getColumn($sql, array $params = [ ], $columnId = 0, $optional = false) {
         $query = $this->executeQuery($sql, $params);
 
         if ($query->rowCount() < 1) {
             if ($optional) {
                 return null;
-            }
-            else {
+            } else {
                 throw new NoRecordsFoundException($sql, $params);
             }
         }
@@ -107,21 +107,21 @@ class SimpleDatabase {
 
     /**
      * @param string $sql
-     * @param array $params
-     * @param bool $optional
-     * @param int $fetchMode
+     * @param array  $params
+     * @param bool   $optional
+     * @param int    $fetchMode
+     *
      * @return array|null
      * @throws NoRecordsFoundException
      * @throws SimpleDatabaseExecuteException
      */
-    public function getRow($sql, array $params = [], $optional = false, $fetchMode = PDO::FETCH_ASSOC) {
+    public function getRow($sql, array $params = [ ], $optional = false, $fetchMode = PDO::FETCH_ASSOC) {
         $query = $this->executeQuery($sql, $params);
 
         if ($query->rowCount() < 1) {
             if ($optional) {
                 return null;
-            }
-            else {
+            } else {
                 throw new NoRecordsFoundException($sql, $params);
             }
         }
@@ -131,8 +131,9 @@ class SimpleDatabase {
 
     /**
      * @param string $sql
-     * @param array $params
-     * @param int $fetchMode
+     * @param array  $params
+     * @param int    $fetchMode
+     *
      * @return array[]
      * @throws SimpleDatabaseExecuteException
      */
@@ -144,14 +145,15 @@ class SimpleDatabase {
 
     /**
      * @param string $sql
-     * @param array $params
-     * @param int $columnId
+     * @param array  $params
+     * @param int    $columnId
+     *
      * @return array
      */
-    public function getColumnFromAllRows($sql, array $params = [], $columnId = 0) {
-        $out = [];
+    public function getColumnFromAllRows($sql, array $params = [ ], $columnId = 0) {
+        $out = [ ];
         foreach ($this->getAll($sql, $params, PDO::FETCH_NUM) as $row) {
-            $out[] = $row[$columnId];
+            $out[] = $row[ $columnId ];
         }
 
         return $out;
@@ -225,37 +227,38 @@ class SimpleDatabase {
 
     /**
      * @param array $data
+     *
      * @return string
      */
     private function getInsertKeys(array $data) {
-        return join(',', array_map(function($identifier){
-            return '`'.str_replace('.', '`.`', $identifier).'`';
+        return join(',', array_map(function ($identifier) {
+            return '`' . str_replace('.', '`.`', $identifier) . '`';
         }, array_keys($data)));
     }
 
     /**
      * @param array $data
+     *
      * @return string
      */
     private function getInsertPlaceholders(array $data) {
-        return join(',', array_map(function($key){
-            return ':'.$key;
+        return join(',', array_map(function ($key) {
+            return ':' . $key;
         }, array_keys($data)));
     }
 
     /**
      * @param array $data
+     *
      * @return string
      */
     private function getInsertData(array $data) {
-        return join(',', array_map(function($item){
+        return join(',', array_map(function ($item) {
             if (is_array($item)) {
                 return $this->getPdo()->quote(join(',', $item));
-            }
-            elseif (is_null($item)) {
+            } elseif (is_null($item)) {
                 return 'NULL';
-            }
-            else {
+            } else {
                 return $this->getPdo()->quote($item);
             }
         }, $data));
@@ -263,7 +266,8 @@ class SimpleDatabase {
 
     /**
      * @param string $table
-     * @param array $data
+     * @param array  $data
+     *
      * @return string
      */
     public function insert($table, array $data) {
@@ -277,14 +281,15 @@ class SimpleDatabase {
 
     /**
      * @param string $table
-     * @param array $entities
+     * @param array  $entities
+     *
      * @return bool
      * @throws SimpleDatabaseExecuteException
      */
     public function insertMultiple($table, array $entities) {
         $keys = $this->getInsertKeys($entities[0]);
 
-        $entityValues = [];
+        $entityValues = [ ];
         foreach ($entities as $entity) {
             $entityValues[] = $this->getInsertData($entity);
         }
@@ -299,7 +304,8 @@ class SimpleDatabase {
 
     /**
      * @param string $table
-     * @param array $data
+     * @param array  $data
+     *
      * @return bool
      * @throws SimpleDatabaseExecuteException
      */
@@ -314,14 +320,15 @@ class SimpleDatabase {
 
     /**
      * @param string $table
-     * @param array $entities
+     * @param array  $entities
+     *
      * @return bool
      * @throws SimpleDatabaseExecuteException
      */
     public function replaceMultiple($table, array $entities) {
         $keys = $this->getInsertKeys($entities[0]);
 
-        $entityValues = [];
+        $entityValues = [ ];
         foreach ($entities as $entity) {
             $entityValues[] = $this->getInsertData($entity);
         }
@@ -336,13 +343,14 @@ class SimpleDatabase {
 
     /**
      * @param array $data
+     *
      * @return string
      */
     private function getDeleteData(array $data) {
-        $out = [];
+        $out = [ ];
 
-        array_walk($data, function($value, $key) use (&$out) {
-            $out[] = "{$key}=".$this->getPdo()->quote($value);
+        array_walk($data, function ($value, $key) use (&$out) {
+            $out[] = "{$key}=" . $this->getPdo()->quote($value);
         });
 
         return join(' AND ', $out);
@@ -350,18 +358,19 @@ class SimpleDatabase {
 
     /**
      * @param string $table
-     * @param array $entities
+     * @param array  $entities
+     *
      * @return bool
      * @throws SimpleDatabaseExecuteException
      */
     public function deleteMultiple($table, array $entities) {
-        $entityValues = array_map([ $this, 'getDeleteData'], $entities);
+        $entityValues = array_map([ $this, 'getDeleteData' ], $entities);
 
         if (0 === count($entityValues)) {
             return true;
         }
 
-        $sql = "DELETE FROM {$table} WHERE (".join(') OR (', $entityValues).');';
+        $sql = "DELETE FROM {$table} WHERE (" . join(') OR (', $entityValues) . ');';
         $this->executeQuery($sql);
 
         return true;
@@ -369,11 +378,12 @@ class SimpleDatabase {
 
     /**
      * @param string $table
+     *
      * @return PDOStatement
      * @throws SimpleDatabaseExecuteException
      */
     public function truncateTable($table) {
-        return $this->executeQuery("TRUNCATE {$table};");
+        return $this->executeQuery("TRUNCATE `{$table}`;");
     }
 
     /**
@@ -390,4 +400,45 @@ class SimpleDatabase {
         $this->executeQuery("SET foreign_key_checks = 1;");
     }
 
+    /**
+     * @param string $tableName
+     * @param string $newTableName
+     * @param bool   $withData
+     *
+     * @throws SimpleDatabaseExecuteException
+     */
+    public function duplicateTable($tableName, $newTableName, $withData = false) {
+        $this->executeQuery("CREATE TABLE IF NOT EXISTS `{$newTableName}` LIKE `{$tableName}`;");
+        if ($withData) {
+            $this->truncateTable($newTableName);
+            $this->executeQuery("INSERT INTO `{$newTableName}` SELECT * FROM `{$tableName}`;");
+        }
+    }
+
+    /**
+     * @param string $prefix
+     *
+     * @return array[]
+     * @throws SimpleDatabaseExecuteException
+     */
+    public function listTablesStartsWith($prefix) {
+        return $this->getAll("SHOW TABLES LIKE '{$prefix}%';", [], PDO::FETCH_COLUMN);
+    }
+
+    /**
+     * @return array[]
+     * @throws SimpleDatabaseExecuteException
+     */
+    public function listAllTables() {
+        return $this->listTablesStartsWith('');
+    }
+
+    /**
+     * @param string $tableName
+     *
+     * @throws SimpleDatabaseExecuteException
+     */
+    public function dropTable($tableName) {
+        $this->executeQuery("DROP TABLE `{$tableName}`;");
+    }
 }
