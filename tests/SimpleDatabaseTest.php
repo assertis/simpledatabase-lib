@@ -3,8 +3,8 @@
 namespace Assertis\SimpleDatabase;
 
 use PDO;
-use PDOMock;
-use PDOStatementMock;
+use Test\PDOMock;
+use Test\PDOStatementMock;
 use PHPUnit_Framework_MockObject_MockObject;
 use PHPUnit_Framework_TestCase;
 use Psr\Log\LoggerInterface;

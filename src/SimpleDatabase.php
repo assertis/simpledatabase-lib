@@ -273,7 +273,7 @@ class SimpleDatabase {
     public function insert($table, array $data) {
         $keys = $this->getInsertKeys($data);
         $placeholders = $this->getInsertPlaceholders($data);
-        $sql = "INSERT INTO {$table} ({$keys}) VALUES ({$placeholders});";
+        $sql = "INSERT INTO `{$table}` ({$keys}) VALUES ({$placeholders});";
         $this->executeQuery($sql, $data);
 
         return $this->getLastInsertId();
@@ -296,7 +296,7 @@ class SimpleDatabase {
 
         $values = join("), \n(", $entityValues);
 
-        $sql = "INSERT INTO {$table} ({$keys}) VALUES ({$values});";
+        $sql = "INSERT INTO `{$table}` ({$keys}) VALUES ({$values});";
         $this->executeQuery($sql);
 
         return true;
@@ -312,7 +312,7 @@ class SimpleDatabase {
     public function replace($table, array $data) {
         $keys = $this->getInsertKeys($data);
         $placeholders = $this->getInsertPlaceholders($data);
-        $sql = "REPLACE INTO {$table} ({$keys}) VALUES ({$placeholders});";
+        $sql = "REPLACE INTO `{$table}` ({$keys}) VALUES ({$placeholders});";
         $this->executeQuery($sql, $data);
 
         return true;
@@ -335,7 +335,7 @@ class SimpleDatabase {
 
         $values = join("), \n(", $entityValues);
 
-        $sql = "REPLACE INTO {$table} ({$keys}) VALUES ({$values});";
+        $sql = "REPLACE INTO `{$table}` ({$keys}) VALUES ({$values});";
         $this->executeQuery($sql);
 
         return true;
