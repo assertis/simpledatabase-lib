@@ -370,7 +370,7 @@ class SimpleDatabase {
             return true;
         }
 
-        $sql = "DELETE FROM {$table} WHERE (" . join(') OR (', $entityValues) . ');';
+        $sql = "DELETE FROM `{$table}` WHERE (" . join(') OR (', $entityValues) . ');';
         $this->executeQuery($sql);
 
         return true;
