@@ -426,6 +426,17 @@ class SimpleDatabase {
     }
 
     /**
+     * @param string $prefix
+     * @return array[]
+     * @throws SimpleDatabaseExecuteException
+     */
+    public function listTablesNotStartingWith($prefix) {
+        return array_filter($this->listAllTables(), function ($tableName) use ($prefix) {
+            return strpos($tableName, $prefix) !== 0;
+        });
+    }
+    
+    /**
      * @return array[]
      * @throws SimpleDatabaseExecuteException
      */
