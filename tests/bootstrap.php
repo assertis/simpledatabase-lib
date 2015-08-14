@@ -2,10 +2,19 @@
 
 namespace Test;
 
-date_default_timezone_set('GMT');
-error_reporting(E_ALL);
+$possibleAutoloadFiles = [
+    __DIR__.'/../../../autoload.php',
+    __DIR__.'/vendor/autoload.php',
+];
 
-require_once __DIR__.'/../vendor/autoload.php';
+foreach ($possibleAutoloadFiles as $possibleAutoloadFile) {
+    if (file_exists($possibleAutoloadFile)) {
+        $loader = require $possibleAutoloadFile;
+        $loader->addPsr4('Assertis\\SimpleDatabase\\', __DIR__);
+    }
+}
+
+error_reporting(E_ALL);
 
 class PDOMock extends \PDO {
 

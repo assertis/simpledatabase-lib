@@ -68,7 +68,7 @@ class SimpleDatabase {
         $query = $this->getPdo()->prepare($sql);
 
         if ($this->logQueries) {
-            $this->getLogger()->debug('Executing query ' . self::resolveQuery($sql, $params));
+            $this->getLogger()->debug('Executing query ' . self::resolveQuery($sql, $params) . ' with params '.json_encode($params));
         }
 
         if (!$query->execute($params)) {
@@ -252,16 +252,24 @@ class SimpleDatabase {
      *
      * @return string
      */
-    private function getInsertData(array $data) {
-        return join(',', array_map(function ($item) {
-            if (is_array($item)) {
-                return $this->getPdo()->quote(join(',', $item));
-            } elseif (is_null($item)) {
-                return 'NULL';
-            } else {
-                return $this->getPdo()->quote($item);
-            }
-        }, $data));
+    private function getInsertData(array $data)
+    {
+        return join(',', array_map([$this, 'quote'], $data));
+    }
+
+    /**
+     * @param mixed$item
+     * @return string
+     */
+    public function quote($item)
+    {
+        if (is_array($item)) {
+            return $this->getPdo()->quote(join(',', $item));
+        } elseif (is_null($item)) {
+            return 'NULL';
+        } else {
+            return $this->getPdo()->quote($item);
+        }
     }
 
     /**
