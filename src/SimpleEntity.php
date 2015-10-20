@@ -7,20 +7,21 @@ use JsonSerializable;
 /**
  * @author Michał Tatarynowicz <michal@assertis.co.uk>
  */
-abstract class SimpleEntity implements JsonSerializable {
+abstract class SimpleEntity implements JsonSerializable
+{
 
     abstract protected function getAsArray();
 
     /**
      * @return array
      */
-    public function toArray() {
+    public function toArray()
+    {
         $out = [];
         foreach ($this->getAsArray() as $key => $value) {
             if (is_object($value) && method_exists($value, 'toArray')) {
                 $out[$key] = $value->toArray();
-            }
-            else {
+            } else {
                 $out[$key] = $value;
             }
         }
@@ -30,7 +31,8 @@ abstract class SimpleEntity implements JsonSerializable {
     /**
      * @return array
      */
-    public function jsonSerialize() {
+    public function jsonSerialize()
+    {
         return $this->toArray();
     }
 

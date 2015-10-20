@@ -5,7 +5,8 @@ namespace Assertis\SimpleDatabase;
 /**
  * @author Michał Tatarynowicz <michal@assertis.co.uk>
  */
-abstract class SimpleFactory {
+abstract class SimpleFactory
+{
 
     /**
      * @var SimpleDatabase
@@ -15,14 +16,16 @@ abstract class SimpleFactory {
     /**
      * @param SimpleDatabase $db
      */
-    public function __construct(SimpleDatabase $db) {
+    public function __construct(SimpleDatabase $db)
+    {
         $this->db = $db;
     }
 
     /**
      * @return SimpleDatabase
      */
-    protected function getDb() {
+    protected function getDb()
+    {
         return $this->db;
     }
 
@@ -39,9 +42,10 @@ abstract class SimpleFactory {
      * @return mixed
      * @throws NoRecordsFoundException
      */
-    protected function getByParameters($sql, array $parameters, $optional=false) {
+    protected function getByParameters($sql, array $parameters, $optional = false)
+    {
         $data = $this->getDb()->getRow($sql, $parameters, $optional);
-		
+
         return $this->fromArray($data);
     }
 
@@ -50,10 +54,11 @@ abstract class SimpleFactory {
      * @param array $parameters
      * @return mixed[]
      */
-    protected function getAllByParameters($sql, array $parameters) {
+    protected function getAllByParameters($sql, array $parameters)
+    {
         $data = $this->getDb()->getAll($sql, $parameters);
-		
-        return array_map([ $this, 'fromArray'], $data);
+
+        return array_map([$this, 'fromArray'], $data);
     }
 
 }

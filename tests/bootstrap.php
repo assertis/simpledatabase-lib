@@ -3,8 +3,8 @@
 namespace Test;
 
 $possibleAutoloadFiles = [
-    __DIR__.'/../../../autoload.php',
-    __DIR__.'/vendor/autoload.php',
+    __DIR__ . '/../../../autoload.php',
+    __DIR__ . '/vendor/autoload.php',
 ];
 
 foreach ($possibleAutoloadFiles as $possibleAutoloadFile) {
@@ -16,28 +16,33 @@ foreach ($possibleAutoloadFiles as $possibleAutoloadFile) {
 
 error_reporting(E_ALL);
 
-class PDOMock extends \PDO {
-
-    public function __construct() {}
-
+class PDOMock extends \PDO
+{
+    public function __construct()
+    {
+    }
 }
 
-class PDOStatementMock extends \PDOStatement {
-
-    public function __construct() {}
-
+class PDOStatementMock extends \PDOStatement
+{
+    public function __construct()
+    {
+    }
 }
 
-class PDOLogger extends \PDO {
-
+class PDOLogger extends \PDO
+{
     private $queries = [];
     private $lastInsertId = 0;
     private $rowCount = 0;
     private $results = [];
 
-    public function __construct() {}
+    public function __construct()
+    {
+    }
 
-    public function prepare($sql) {
+    public function prepare($sql)
+    {
         $statement = new PDOLoggerStatement();
         $statement->setPdo($this);
         $statement->setSql($sql);
@@ -49,27 +54,32 @@ class PDOLogger extends \PDO {
     /**
      * @param int $rowCount
      */
-    public function setRowCount($rowCount) {
+    public function setRowCount($rowCount)
+    {
         $this->rowCount = $rowCount;
     }
 
     /**
      * @param array $results
      */
-    public function setResults($results) {
+    public function setResults($results)
+    {
         $this->results = $results;
     }
 
-    public function addQuery($sql, $data) {
+    public function addQuery($sql, $data)
+    {
         return $this->queries[] = compact('sql', 'data');
     }
 
-    public function resetQueries() {
+    public function resetQueries()
+    {
         $this->queries = [];
         $this->lastInsertId = 0;
     }
 
-    public function lastInsertId() {
+    public function lastInsertId()
+    {
         $this->lastInsertId++;
         return $this->lastInsertId;
     }
@@ -78,7 +88,8 @@ class PDOLogger extends \PDO {
      * @param string $prefix
      * @return array
      */
-    public function getQueries($prefix=null) {
+    public function getQueries($prefix = null)
+    {
         if (empty($prefix)) {
             return $this->queries;
         }
@@ -96,7 +107,8 @@ class PDOLogger extends \PDO {
      * @param string $table
      * @return array
      */
-    public function getInsertQueries($table) {
+    public function getInsertQueries($table)
+    {
         return $this->getQueries("INSERT INTO `{$table}`");
     }
 
@@ -105,7 +117,8 @@ class PDOLogger extends \PDO {
      * @param int $index
      * @return array
      */
-    public function getInsertQuery($table, $index=0) {
+    public function getInsertQuery($table, $index = 0)
+    {
         $queries = $this->getInsertQueries($table);
         return $queries[$index];
     }
@@ -114,7 +127,8 @@ class PDOLogger extends \PDO {
      * @param string $table
      * @return array
      */
-    public function getUpdateQueries($table) {
+    public function getUpdateQueries($table)
+    {
         return $this->getQueries("UPDATE `{$table}`");
     }
 
@@ -123,7 +137,8 @@ class PDOLogger extends \PDO {
      * @param int $index
      * @return array
      */
-    public function getUpdateQuery($table, $index=0) {
+    public function getUpdateQuery($table, $index = 0)
+    {
         $queries = $this->getUpdateQueries($table);
         return $queries[$index];
     }
@@ -132,7 +147,8 @@ class PDOLogger extends \PDO {
      * @param string $table
      * @return array
      */
-    public function getDeleteQueries($table) {
+    public function getDeleteQueries($table)
+    {
         return $this->getQueries("DELETE FROM `{$table}`");
     }
 
@@ -141,7 +157,8 @@ class PDOLogger extends \PDO {
      * @param int $index
      * @return array
      */
-    public function getDeleteQuery($table, $index=0) {
+    public function getDeleteQuery($table, $index = 0)
+    {
         $queries = $this->getDeleteQueries($table);
         return $queries[$index];
     }
@@ -149,7 +166,8 @@ class PDOLogger extends \PDO {
     /**
      * @return array
      */
-    public function getSelectQueries() {
+    public function getSelectQueries()
+    {
         return $this->getQueries("SELECT");
     }
 
@@ -157,63 +175,85 @@ class PDOLogger extends \PDO {
      * @param int $index
      * @return array
      */
-    public function getSelectQuery($index=0) {
+    public function getSelectQuery($index = 0)
+    {
         $queries = $this->getSelectQueries();
         return $queries[$index];
     }
-
 }
 
-class PDOLoggerStatement extends \PDOStatement {
-
+class PDOLoggerStatement extends \PDOStatement
+{
+    /**
+     * @var PDOLogger
+     */
     private $pdo;
+    /**
+     * @var string
+     */
     private $sql;
+    /**
+     * @var int
+     */
     private $rowCount = 0;
+    /**
+     * @var array
+     */
     private $results = [];
 
-    public function __construct() {}
+    public function __construct()
+    {
+    }
 
-    public function setPdo(PDOLogger $pdo) {
+    public function setPdo(PDOLogger $pdo)
+    {
         $this->pdo = $pdo;
     }
 
-    public function setSql($sql) {
+    public function setSql($sql)
+    {
         $this->sql = $sql;
     }
 
-    public function execute($data) {
+    public function execute($data)
+    {
         $this->pdo->addQuery(trim($this->sql), $data);
         return true;
     }
 
-    public function rowCount() {
+    public function rowCount()
+    {
         return $this->rowCount;
     }
 
-    public function fetchColumn() {
+    public function fetchColumn()
+    {
         return $this->results[0][0];
     }
 
-    public function fetch() {
+    public function fetch()
+    {
         return $this->results[0];
     }
 
-    public function fetchAll() {
+    public function fetchAll()
+    {
         return $this->results;
     }
 
     /**
      * @param int $rowCount
      */
-    public function setRowCount($rowCount) {
+    public function setRowCount($rowCount)
+    {
         $this->rowCount = $rowCount;
     }
 
     /**
      * @param array $results
      */
-    public function setResults($results) {
+    public function setResults($results)
+    {
         $this->results = $results;
     }
-
 }

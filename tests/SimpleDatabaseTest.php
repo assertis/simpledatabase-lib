@@ -15,7 +15,7 @@ use Psr\Log\LoggerInterface;
 class SimpleDatabaseTest extends PHPUnit_Framework_TestCase {
 
     /**
-     * @var PHPUnit_Framework_MockObject_MockObject
+     * @var PDO|PHPUnit_Framework_MockObject_MockObject
      */
     private $pdo;
     /**
