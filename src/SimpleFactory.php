@@ -45,6 +45,11 @@ abstract class SimpleFactory
     protected function getByParameters($sql, array $parameters, $optional = false)
     {
         $data = $this->getDb()->getRow($sql, $parameters, $optional);
+        
+		// Can only happen if is optional
+        if (null === $data) {
+            return null;
+        }
 
         return $this->fromArray($data);
     }
