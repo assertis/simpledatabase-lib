@@ -19,7 +19,9 @@ abstract class SimpleEntity implements JsonSerializable
     {
         $out = [];
         foreach ($this->getAsArray() as $key => $value) {
-            if (is_object($value) && method_exists($value, 'toArray')) {
+            if (is_object($value) && method_exists($value, 'jsonSerialize')) {
+                $out[$key] = $value->jsonSerialize();
+            } elseif (is_object($value) && method_exists($value, 'toArray')) {
                 $out[$key] = $value->toArray();
             } else {
                 $out[$key] = $value;
