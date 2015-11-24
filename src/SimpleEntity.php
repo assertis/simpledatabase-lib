@@ -9,17 +9,20 @@ use JsonSerializable;
  */
 abstract class SimpleEntity implements JsonSerializable
 {
-
-    abstract protected function getAsArray();
-
     /**
      * @return array
      */
-    public function toArray()
+    abstract protected function getAsArray();
+
+    /**
+     * @param bool $isJson
+     * @return array
+     */
+    public function toArray($isJson = false)
     {
         $out = [];
         foreach ($this->getAsArray() as $key => $value) {
-            if (is_object($value) && method_exists($value, 'jsonSerialize')) {
+            if ($isJson && is_object($value) && method_exists($value, 'jsonSerialize')) {
                 $out[$key] = $value->jsonSerialize();
             } elseif (is_object($value) && method_exists($value, 'toArray')) {
                 $out[$key] = $value->toArray();
@@ -35,7 +38,6 @@ abstract class SimpleEntity implements JsonSerializable
      */
     public function jsonSerialize()
     {
-        return $this->toArray();
+        return $this->toArray(true);
     }
-
 }
