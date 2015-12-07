@@ -70,7 +70,7 @@ abstract class SimpleFactory
      * @param array $parameters
      * @return string
      */
-    private function parametersToQuery(array $parameters)
+    protected function parametersToQuery(array $parameters)
     {
         if (empty($parameters)) {
             return '1=1';
