@@ -45,8 +45,8 @@ abstract class SimpleFactory
     protected function getByParameters($sql, array $parameters, $optional = false)
     {
         $data = $this->getDb()->getRow($sql, $parameters, $optional);
-        
-		// Can only happen if is optional
+
+        // Can only happen if is optional
         if (null === $data) {
             return null;
         }
@@ -80,7 +80,10 @@ abstract class SimpleFactory
         foreach ($parameters as $key => $value) {
             $out[] = "({$key} = :{$key})";
         }
-        return join(' AND ', $out);
+        return [
+            join(' AND ', $out),
+            $parameters,
+        ];
     }
 
     /**
@@ -94,10 +97,10 @@ abstract class SimpleFactory
     protected function getSearchResultsByParameters($table, array $parameters, $order, $page, $limit)
     {
         $offset = ($page - 1) * $limit;
-        $query = $this->parametersToQuery($parameters);
+        list($query, $filteredParameters) = $this->parametersToQuery($parameters);
         $sql = "SELECT * FROM `{$table}` WHERE {$query} ORDER BY {$order} LIMIT {$offset},{$limit};";
-        
-        return $this->getAllByParameters($sql, $parameters);
+
+        return $this->getAllByParameters($sql, $filteredParameters);
     }
 
     /**
@@ -107,9 +110,9 @@ abstract class SimpleFactory
      */
     public function getSearchResultsCountByParameters($table, array $parameters)
     {
-        $query = $this->parametersToQuery($parameters);
+        list($query, $filteredParameters) = $this->parametersToQuery($parameters);
         $sql = "SELECT COUNT(*) FROM `{$table}` WHERE {$query};";
 
-        return (int)$this->getDb()->getColumn($sql, $parameters);
+        return (int)$this->getDb()->getColumn($sql, $filteredParameters);
     }
 }
