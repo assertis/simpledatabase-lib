@@ -8,15 +8,10 @@ use PDOStatement;
 use Psr\Log\LoggerInterface;
 
 /**
- * Class SimpleDb
- *
- * @package Assertis\Util
- *
  * @author  Michał Tatarynowicz <michal@assertis.co.uk>
  */
 class SimpleDatabase
 {
-
     /**
      * @var PDO
      */
@@ -26,9 +21,9 @@ class SimpleDatabase
      */
     private $logger;
     /**
-     * @var bool
+     * @var LoggerInterface
      */
-    private $logQueries;
+    private $queryLogger;
 
     /**
      * @param PDO $pdo
@@ -39,7 +34,18 @@ class SimpleDatabase
     {
         $this->pdo = $pdo;
         $this->logger = $logger;
-        $this->logQueries = $logQueries;
+        
+        if ($logQueries) {
+            $this->queryLogger = $logger;
+        }
+    }
+
+    /**
+     * @param LoggerInterface $queryLogger
+     */
+    public function setQueryLogger(LoggerInterface $queryLogger)
+    {
+        $this->queryLogger = $queryLogger;
     }
 
     /**
@@ -70,9 +76,16 @@ class SimpleDatabase
     public function executeQuery($sql, $params = [])
     {
         $query = $this->getPdo()->prepare($sql);
-
-        if ($this->logQueries) {
-            $this->getLogger()->debug('Executing query ' . self::resolveQuery($sql, $params) . ' with params ' . json_encode($params));
+        
+        if ($this->queryLogger) {
+            $this->queryLogger->debug(sprintf(
+                'Executing "%s" with params %s',
+                $sql,
+                json_encode($params)
+            ));
+            $this->queryLogger->info(sprintf(
+                self::resolveQuery($sql, $params)
+            ));
         }
 
         if (!$query->execute($params)) {
