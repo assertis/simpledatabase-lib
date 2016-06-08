@@ -41,7 +41,7 @@ class PDOLogger extends \PDO
     {
     }
 
-    public function prepare($sql)
+    public function prepare($sql, $options = null)
     {
         $statement = new PDOLoggerStatement();
         $statement->setPdo($this);
@@ -78,7 +78,7 @@ class PDOLogger extends \PDO
         $this->lastInsertId = 0;
     }
 
-    public function lastInsertId()
+    public function lastInsertId($seqname = null)
     {
         $this->lastInsertId++;
         return $this->lastInsertId;
@@ -215,7 +215,7 @@ class PDOLoggerStatement extends \PDOStatement
         $this->sql = $sql;
     }
 
-    public function execute($data)
+    public function execute($data = null)
     {
         $this->pdo->addQuery(trim($this->sql), $data);
         return true;
@@ -226,17 +226,17 @@ class PDOLoggerStatement extends \PDOStatement
         return $this->rowCount;
     }
 
-    public function fetchColumn()
+    public function fetchColumn($columnNumber = null)
     {
         return $this->results[0][0];
     }
 
-    public function fetch()
+    public function fetch($how = null, $orientation = null, $offset = null)
     {
         return $this->results[0];
     }
 
-    public function fetchAll()
+    public function fetchAll($how = null, $class_name = null, $ctor_args = null)
     {
         return $this->results;
     }
