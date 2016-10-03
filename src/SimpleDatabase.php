@@ -294,11 +294,11 @@ class SimpleDatabase
     public function quote($item)
     {
         if (is_array($item)) {
-            return $this->getPdo()->quote(join(',', $item));
+            return $this->pdo->quote(join(',', $item));
         } elseif (is_null($item)) {
             return 'NULL';
         } else {
-            return $this->getPdo()->quote($item);
+            return $this->pdo->quote($item);
         }
     }
 
