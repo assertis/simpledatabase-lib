@@ -384,22 +384,6 @@ class SimpleDatabase
     }
 
     /**
-     * @param array $data
-     *
-     * @return string
-     */
-    private function getDeleteData(array $data)
-    {
-        $out = [];
-
-        array_walk($data, function ($value, $key) use (&$out) {
-            $out[] = "{$key}=" . $this->getPdo()->quote($value);
-        });
-
-        return join(' AND ', $out);
-    }
-
-    /**
      * @param string $table
      * @param array $entity
      * @return bool
@@ -412,19 +396,22 @@ class SimpleDatabase
     /**
      * @param string $table
      * @param array $entities
-     *
      * @return bool
      * @throws SimpleDatabaseExecuteException
      */
     public function deleteMultiple($table, array $entities)
     {
-        $entityValues = array_map([$this, 'getDeleteData'], $entities);
+        $keys = $this->getInsertKeys($entities[0]);
 
-        if (0 === count($entityValues)) {
-            return true;
+        $entityValues = [];
+        foreach ($entities as $entity) {
+            $entityValues[] = $this->getInsertData($entity);
         }
 
-        $sql = "DELETE FROM `{$table}` WHERE (" . join(') OR (', $entityValues) . ');';
+        $values = '('.join("), \n(", $entityValues).')';
+
+        $sql = "DELETE FROM `{$table}` WHERE ({$keys}) IN ({$values});";
+        
         $this->executeQuery($sql);
 
         return true;
