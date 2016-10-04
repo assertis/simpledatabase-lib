@@ -30,9 +30,9 @@ class SimpleDatabaseTest extends PHPUnit_Framework_TestCase
 
     public function setUp()
     {
-        $this->pdo = $this->getMock(PDOMock::class);
-        $this->statement = $this->getMock(PDOStatementMock::class);
-        $this->logger = $this->getMock(LoggerInterface::class);
+        $this->pdo = $this->createMock(PDOMock::class);
+        $this->statement = $this->createMock(PDOStatementMock::class);
+        $this->logger = $this->createMock(LoggerInterface::class);
     }
 
     public function testExecuteQuery()
@@ -178,8 +178,12 @@ class SimpleDatabaseTest extends PHPUnit_Framework_TestCase
         $createSql = "CREATE TABLE IF NOT EXISTS `new_table` LIKE `table`;";
         $clearSql = "TRUNCATE `new_table`;";
         $insertSql = "INSERT INTO `new_table` SELECT * FROM `table`;";
-        $statements = [$this->getMock(PDOStatementMock::class), $this->getMock(PDOStatementMock::class),
-            $this->getMock(PDOStatementMock::class)];
+        
+        $statements = [
+            $this->createMock(PDOStatementMock::class),
+            $this->createMock(PDOStatementMock::class),
+            $this->createMock(PDOStatementMock::class),
+        ];
 
         $this->pdo->expects($this->exactly(3))
             ->method('prepare')
