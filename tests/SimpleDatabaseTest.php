@@ -64,6 +64,21 @@ class SimpleDatabaseTest extends PHPUnit_Framework_TestCase
         $db->executeQuery($sql, $params);
     }
 
+    public function testExecuteQueryWithReadPdoUsage()
+    {
+        $sql = "SELECT * FROM `table`";
+        $this->statement->expects($this->once())->method('execute')->willReturn(true);
+
+        $readPDO = $this->createMock(PDOMock::class);
+        $readPDO->expects($this->once())->method('prepare')->willReturn($this->statement);
+
+        $this->pdo->method('prepare')->with($sql)->willReturn($this->statement);
+
+        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPDO);
+
+        $db->executeQuery($sql);
+    }
+
     public function testGetColumn()
     {
         $sql = "SQL";
