@@ -37,7 +37,7 @@ class SimpleDatabase
      *  If this parameter is passed, then read/write separation will be enabled. $pdo parameter will be the one
      *  responsible for write operations, and $readOnlyPDO will be connection responsible for reading data.
      */
-    public function __construct(PDO $pdo, LoggerInterface $logger, $logQueries = false, PDO $readOnlyPDO = null)
+    public function __construct($pdo, $logger, $logQueries = false, $readOnlyPDO = null)
     {
         $this->pdo = $pdo;
         $this->readOnlyPdo = $readOnlyPDO;
@@ -83,11 +83,7 @@ class SimpleDatabase
      */
     public function executeQuery($sql, $params = []): PDOStatement
     {
-        if ($this->isReadWriteSeparationEnabled()) {
-            $query = $this->getPdoBasedOnQueryType($sql)->prepare($sql);
-        } else {
-            $query = $this->getPdo()->prepare($sql);
-        }
+        $query = $this->getPdoBasedOnQueryType($sql)->prepare($sql);
 
         if ($this->queryLogger) {
             $this->queryLogger->debug(sprintf(
@@ -284,12 +280,8 @@ class SimpleDatabase
      */
     public function getPdoBasedOnQueryType(string $sql)
     {
-        // in case if someone will try to not define read PDO, but need query separation !
-        if ($this->isReadWriteSeparationEnabled() === false) {
-            throw new SimpleDatabaseException("Read-write separation mode is disabled!");
-        }
-
-        if (SimpleQueryUtils::defineQueryAsReadOrWrite($sql) === SimpleQueryUtils::QUERY_TYPE_READ) {
+        // if we have read/write separation enabled and it is read query
+        if ($this->readOnlyPdo !== null && strpos(strtoupper(trim($sql)), 'SELECT') === 0) {
             return $this->getReadPdo();
         } else {
             return $this->getWritePdo();

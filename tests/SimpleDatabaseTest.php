@@ -398,4 +398,39 @@ class SimpleDatabaseTest extends PHPUnit_Framework_TestCase
         $db->commitTransaction();
         $db->rollbackTransaction();
     }
+
+    public function testExecuteQueryWithDifferentQueries()
+    {
+        $insert = "INSERT INTO `users` VALUES (1, 'admin', 'password')";
+        $update = "UPDATE `users` SET `password`='admin1' WHERE `id`=1";
+        $delete = "DELETE FROM `users` WHERE `id`=1";
+        $select = "SELECT * FROM `users`";
+        $replace = "REPLACE INTO `users` VALUES (1, 'admin', 'password')";
+        $other1 = "START TRANSACTION";
+        $other2 = "SET foreign_key_checks=0";
+        $multiLineQuery = "
+            SELECT 
+                *
+            FROM `users`
+        ";
+        $lowercase = "select * from `users`";
+
+        $statement = $this->createMock(PDOStatementMock::class);
+        $statement->expects($this->exactly(9))->method('execute')->willReturn(true);
+
+        $readPDO = $this->createMock(PDOMock::class);
+        $readPDO->expects($this->exactly(3))->method('prepare')->willReturn($statement);
+        $this->pdo->expects($this->exactly(6))->method('prepare')->willReturn($statement);
+
+        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPDO);
+        $db->executeQuery($insert);
+        $db->executeQuery($update);
+        $db->executeQuery($delete);
+        $db->executeQuery($select);
+        $db->executeQuery($replace);
+        $db->executeQuery($other1);
+        $db->executeQuery($other2);
+        $db->executeQuery($multiLineQuery);
+        $db->executeQuery($lowercase);
+    }
 }
