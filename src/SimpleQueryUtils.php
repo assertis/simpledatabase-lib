@@ -34,7 +34,7 @@ class SimpleQueryUtils
      * @return string
      * @throws UnknownQueryTypeException
      */
-    public static function defineQueryAsReadOrWrite(string $query)
+    public static function defineQueryAsReadOrWrite(string $query): string
     {
         $queryType = self::getQueryType($query);
         if(in_array($queryType, self::QUERY_TYPES_DEFINED_AS_READ)){
@@ -50,7 +50,7 @@ class SimpleQueryUtils
      * @param string $query
      * @return string
      */
-    public static function getQueryType(string $query)
+    public static function getQueryType(string $query): string
     {
         $firstWord = strtoupper(self::getFirstWord($query));
 
