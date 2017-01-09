@@ -72,11 +72,46 @@ class SimpleDatabaseTest extends PHPUnit_Framework_TestCase
         $readPDO = $this->createMock(PDOMock::class);
         $readPDO->expects($this->once())->method('prepare')->willReturn($this->statement);
 
-        $this->pdo->method('prepare')->with($sql)->willReturn($this->statement);
+        $this->pdo->expects($this->exactly(0))->method('prepare')->with($sql)->willReturn($this->statement);
+        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPDO);
+        $db->executeQuery($sql);
+    }
 
+    public function testExecuteQueryWithReadWriteModeEnabled()
+    {
+        $sql = "INSERT INTO `table` VALUES (1,2,3)";
+        $this->statement->expects($this->once())->method('execute')->willReturn(true);
+
+        $readPDO = $this->createMock(PDOMock::class);
+        $readPDO->expects($this->exactly(0))->method('prepare')->willReturn($this->statement);
+
+        $this->pdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
+        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPDO);
+        $db->executeQuery($sql);
+    }
+
+    public function testIsReadWriteSeparationEnabled()
+    {
+        $readPDO = $this->createMock(PDOMock::class);
         $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPDO);
 
-        $db->executeQuery($sql);
+        $this->assertTrue($db->isReadWriteSeparationEnabled());
+
+        $db = new SimpleDatabase($this->pdo, $this->logger);
+        $this->assertFalse($db->isReadWriteSeparationEnabled());
+    }
+
+    public function testGetPdoBasedOnQueryType()
+    {
+        $readPDO = $this->createMock(PDOMock::class);
+        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPDO);
+
+        $this->assertSame($readPDO, $db->getPdoBasedOnQueryType("SELECT * FROM `users`"));
+        $this->assertSame($this->pdo, $db->getPdoBasedOnQueryType("INSERT INTO `users` VALUES (1,2)"));
+        $this->assertSame($this->pdo, $db->getPdoBasedOnQueryType("UPDATE `users` SET `password`='admin1' WHERE `id`=1"));
+        $this->assertSame($this->pdo, $db->getPdoBasedOnQueryType("DELETE FROM `users` WHERE `id`=1"));
+        $this->assertSame($this->pdo, $db->getPdoBasedOnQueryType("REPLACE INTO `users` VALUES (1, 'admin', 'password')"));
+        $this->assertSame($this->pdo, $db->getPdoBasedOnQueryType("SET foreign_key_checks=0"));
     }
 
     public function testGetColumn()
@@ -91,6 +126,23 @@ class SimpleDatabaseTest extends PHPUnit_Framework_TestCase
         $this->statement->expects($this->once())->method('fetchColumn')->with(0)->willReturn($data[0]);
 
         $db = new SimpleDatabase($this->pdo, $this->logger);
+
+        $this->assertSame($data[0], $db->getColumn($sql, $params));
+    }
+
+    public function testGetColumnWithReadPdo()
+    {
+        $sql = "SELECT `column` FROM `table`";
+        $params = ['foo' => 'bar'];
+        $data = ['baz', 'boo'];
+
+        $this->statement->expects($this->once())->method('execute')->with($params)->willReturn(true);
+        $this->statement->expects($this->once())->method('rowCount')->willReturn(1);
+        $this->statement->expects($this->once())->method('fetchColumn')->with(0)->willReturn($data[0]);
+
+        $readPdo = $this->createMock(PDOMock::class);
+        $readPdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
+        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPdo);
 
         $this->assertSame($data[0], $db->getColumn($sql, $params));
     }
@@ -127,6 +179,23 @@ class SimpleDatabaseTest extends PHPUnit_Framework_TestCase
         $this->assertSame($data, $db->getRow($sql, $params));
     }
 
+    public function testGetRowWithReadPdo()
+    {
+        $sql = "SELECT * FROM `table`";
+        $params = ['foo' => 'bar'];
+        $data = ['baz', 'boo'];
+
+        $this->statement->expects($this->once())->method('execute')->with($params)->willReturn(true);
+        $this->statement->expects($this->once())->method('rowCount')->willReturn(1);
+        $this->statement->expects($this->once())->method('fetch')->willReturn($data);
+
+        $readPdo = $this->createMock(PDOMock::class);
+        $readPdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
+        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPdo);
+
+        $this->assertSame($data, $db->getRow($sql, $params));
+    }
+
     /**
      * @expectedException \Assertis\SimpleDatabase\SimpleDatabaseConstraintException
      */
@@ -145,16 +214,17 @@ class SimpleDatabaseTest extends PHPUnit_Framework_TestCase
 
     public function testGetAll()
     {
-        $sql = "SQL";
+        $sql = "SELECT * FROM `table`";
         $params = ['foo' => 'bar'];
         $data = [['baz', 'boo']];
         $fetchMode = 1234;
 
-        $this->pdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
         $this->statement->expects($this->once())->method('execute')->with($params)->willReturn(true);
         $this->statement->expects($this->once())->method('fetchAll')->with($fetchMode)->willReturn($data);
 
-        $db = new SimpleDatabase($this->pdo, $this->logger);
+        $readPdo = $this->createMock(PDOMock::class);
+        $readPdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
+        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPdo);
 
         $this->assertSame($data, $db->getAll($sql, $params, $fetchMode));
     }
@@ -267,11 +337,42 @@ class SimpleDatabaseTest extends PHPUnit_Framework_TestCase
         );
     }
 
+    public function testGetColumnFromAllRowsWithReadPdo()
+    {
+        $sql = "SELECT `column` FROM `table`";
+        $params = ['foo' => 'bar'];
+        $data = [['baz', 'boo'], ['bing', 'bang']];
+        $column = 1;
+
+        $this->statement->expects($this->once())->method('execute')->with($params)->willReturn(true);
+        $this->statement->expects($this->once())->method('fetchAll')->willReturn($data);
+
+        $readPdo = $this->createMock(PDOMock::class);
+        $readPdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
+        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPdo);
+
+        $this->assertSame(
+            [$data[0][$column], $data[1][$column]],
+            $db->getColumnFromAllRows($sql, $params, $column)
+        );
+    }
+
     public function testGetLastInsertId()
     {
         $id = '1234';
         $this->pdo->expects($this->once())->method('lastInsertId')->willReturn($id);
         $db = new SimpleDatabase($this->pdo, $this->logger);
+        $this->assertSame($id, $db->getLastInsertId());
+    }
+
+    public function testGetLastInsertIdWithReadPdo()
+    {
+        $id = '1234';
+        $this->pdo->expects($this->once())->method('lastInsertId')->willReturn($id);
+
+        $readPdo = $this->createMock(PDO::class);
+        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPdo);
+
         $this->assertSame($id, $db->getLastInsertId());
     }
 
@@ -281,6 +382,18 @@ class SimpleDatabaseTest extends PHPUnit_Framework_TestCase
         $this->statement->expects($this->exactly(3))->method('execute')->willReturn(true);
 
         $db = new SimpleDatabase($this->pdo, $this->logger);
+        $db->startTransaction();
+        $db->commitTransaction();
+        $db->rollbackTransaction();
+    }
+
+    public function testTransactionWithReadPdo()
+    {
+        $this->pdo->expects($this->exactly(3))->method('prepare')->willReturn($this->statement);
+        $this->statement->expects($this->exactly(3))->method('execute')->willReturn(true);
+
+        $readPdo = $this->createMock(PDO::class);
+        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPdo);
         $db->startTransaction();
         $db->commitTransaction();
         $db->rollbackTransaction();
