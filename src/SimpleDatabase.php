@@ -278,7 +278,7 @@ class SimpleDatabase
      * This method will work fine only if self::isReadWriteSeparationEnabled method will return true.
      * If this object do not have readOnlyPdo parameter provided - then it will throw an exception!
      */
-    public function getPdoBasedOnQueryType(string $sql)
+    public function getPdoBasedOnQueryType(string $sql): PDO
     {
         // if we have read/write separation enabled and it is read query
         if ($this->readOnlyPdo !== null && strpos(strtoupper(trim($sql)), 'SELECT') === 0) {
