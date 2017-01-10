@@ -17,6 +17,10 @@ class SimpleDatabase
      */
     private $pdo;
     /**
+     * @var PDO
+     */
+    private $readOnlyPdo;
+    /**
      * @var LoggerInterface
      */
     private $logger;
@@ -29,12 +33,16 @@ class SimpleDatabase
      * @param PDO $pdo
      * @param LoggerInterface $logger
      * @param bool $logQueries
+     * @param PDO|null $readOnlyPDO
+     *  If this parameter is passed, then read/write separation will be enabled. $pdo parameter will be the one
+     *  responsible for write operations, and $readOnlyPDO will be connection responsible for reading data.
      */
-    public function __construct(PDO $pdo, LoggerInterface $logger, $logQueries = false)
+    public function __construct($pdo, $logger, $logQueries = false, $readOnlyPDO = null)
     {
         $this->pdo = $pdo;
+        $this->readOnlyPdo = $readOnlyPDO;
         $this->logger = $logger;
-        
+
         if ($logQueries) {
             $this->queryLogger = $logger;
         }
@@ -52,7 +60,7 @@ class SimpleDatabase
      * @param string $sql
      * @param array $params
      *
-     * @return string
+     * @return string|array
      */
     public static function resolveQuery($sql, $params)
     {
@@ -73,10 +81,10 @@ class SimpleDatabase
      * @return PDOStatement
      * @throws SimpleDatabaseExecuteException
      */
-    public function executeQuery($sql, $params = [])
+    public function executeQuery($sql, $params = []): PDOStatement
     {
-        $query = $this->getPdo()->prepare($sql);
-        
+        $query = $this->getPdoBasedOnQueryType($sql)->prepare($sql);
+
         if ($this->queryLogger) {
             $this->queryLogger->debug(sprintf(
                 'Executing "%s" with params %s',
@@ -108,7 +116,7 @@ class SimpleDatabase
      * @throws NoRecordsFoundException
      * @throws SimpleDatabaseExecuteException
      */
-    public function getColumn($sql, array $params = [], $columnId = 0, $optional = false)
+    public function getColumn($sql, array $params = [], $columnId = 0, $optional = false): string
     {
         $query = $this->executeQuery($sql, $params);
 
@@ -156,7 +164,7 @@ class SimpleDatabase
      * @return array[]
      * @throws SimpleDatabaseExecuteException
      */
-    public function getAll($sql, array $params = [], $fetchMode = PDO::FETCH_ASSOC)
+    public function getAll($sql, array $params = [], $fetchMode = PDO::FETCH_ASSOC): array
     {
         $query = $this->executeQuery($sql, $params);
 
@@ -170,7 +178,7 @@ class SimpleDatabase
      *
      * @return array
      */
-    public function getColumnFromAllRows($sql, array $params = [], $columnId = 0)
+    public function getColumnFromAllRows($sql, array $params = [], $columnId = 0): array
     {
         $out = [];
         foreach ($this->getAll($sql, $params, PDO::FETCH_NUM) as $row) {
@@ -184,7 +192,7 @@ class SimpleDatabase
      * @return PDOStatement
      * @throws SimpleDatabaseExecuteException
      */
-    public function startTransaction()
+    public function startTransaction(): PDOStatement
     {
         return $this->executeQuery("START TRANSACTION");
     }
@@ -193,7 +201,7 @@ class SimpleDatabase
      * @return PDOStatement
      * @throws SimpleDatabaseExecuteException
      */
-    public function commitTransaction()
+    public function commitTransaction(): PDOStatement
     {
         return $this->executeQuery("COMMIT");
     }
@@ -202,7 +210,7 @@ class SimpleDatabase
      * @return PDOStatement
      * @throws SimpleDatabaseExecuteException
      */
-    public function rollbackTransaction()
+    public function rollbackTransaction(): PDOStatement
     {
         return $this->executeQuery("ROLLBACK");
     }
@@ -210,7 +218,7 @@ class SimpleDatabase
     /**
      * @return string
      */
-    public function getLastInsertId()
+    public function getLastInsertId(): string
     {
         return $this->getPdo()->lastInsertId();
     }
@@ -240,15 +248,50 @@ class SimpleDatabase
     /**
      * @return PDO
      */
-    protected function getPdo()
+    protected function getPdo(): PDO
     {
         return $this->pdo;
     }
 
     /**
+     * @return null|PDO
+     */
+    protected function getReadPdo()
+    {
+        return $this->readOnlyPdo;
+    }
+
+    /**
+     * @return PDO
+     */
+    protected function getWritePdo(): PDO
+    {
+        return $this->getPdo();
+    }
+
+    /**
+     *  Return read or write PDO object based on sql query passed as parameter.
+     *
+     * @param string $sql
+     * @return PDO
+     * @throws SimpleDatabaseException
+     * This method will work fine only if self::isReadWriteSeparationEnabled method will return true.
+     * If this object do not have readOnlyPdo parameter provided - then it will throw an exception!
+     */
+    public function getPdoBasedOnQueryType(string $sql): PDO
+    {
+        // if we have read/write separation enabled and it is read query
+        if ($this->readOnlyPdo !== null && strpos(strtoupper(trim($sql)), 'SELECT') === 0) {
+            return $this->getReadPdo();
+        } else {
+            return $this->getWritePdo();
+        }
+    }
+
+    /**
      * @return LoggerInterface
      */
-    protected function getLogger()
+    protected function getLogger(): LoggerInterface
     {
         return $this->logger;
     }
@@ -258,7 +301,7 @@ class SimpleDatabase
      *
      * @return string
      */
-    private function getInsertKeys(array $data)
+    private function getInsertKeys(array $data): string
     {
         return join(',', array_map(function ($identifier) {
             return '`' . str_replace('.', '`.`', $identifier) . '`';
@@ -270,7 +313,7 @@ class SimpleDatabase
      *
      * @return string
      */
-    private function getInsertPlaceholders(array $data)
+    private function getInsertPlaceholders(array $data): string
     {
         return join(',', array_map(function ($key) {
             return ':' . $key;
@@ -282,7 +325,7 @@ class SimpleDatabase
      *
      * @return string
      */
-    private function getInsertData(array $data)
+    private function getInsertData(array $data): string
     {
         return join(',', array_map([$this, 'quote'], $data));
     }
@@ -291,7 +334,7 @@ class SimpleDatabase
      * @param mixed $item
      * @return string
      */
-    public function quote($item)
+    public function quote($item): string
     {
         if (is_array($item)) {
             return $this->pdo->quote(join(',', $item));
@@ -308,7 +351,7 @@ class SimpleDatabase
      *
      * @return string
      */
-    public function insert($table, array $data)
+    public function insert($table, array $data): string
     {
         $keys = $this->getInsertKeys($data);
         $placeholders = $this->getInsertPlaceholders($data);
@@ -325,7 +368,7 @@ class SimpleDatabase
      * @return bool
      * @throws SimpleDatabaseExecuteException
      */
-    public function insertMultiple($table, array $entities)
+    public function insertMultiple($table, array $entities): bool
     {
         $keys = $this->getInsertKeys($entities[0]);
 
@@ -349,7 +392,7 @@ class SimpleDatabase
      * @return bool
      * @throws SimpleDatabaseExecuteException
      */
-    public function replace($table, array $data)
+    public function replace($table, array $data): bool
     {
         $keys = $this->getInsertKeys($data);
         $placeholders = $this->getInsertPlaceholders($data);
@@ -366,7 +409,7 @@ class SimpleDatabase
      * @return bool
      * @throws SimpleDatabaseExecuteException
      */
-    public function replaceMultiple($table, array $entities)
+    public function replaceMultiple($table, array $entities): bool
     {
         $keys = $this->getInsertKeys($entities[0]);
 
@@ -388,7 +431,7 @@ class SimpleDatabase
      * @param array $entity
      * @return bool
      */
-    public function delete($table, array $entity)
+    public function delete($table, array $entity): bool
     {
         return $this->deleteMultiple($table, [$entity]);
     }
@@ -399,7 +442,7 @@ class SimpleDatabase
      * @return bool
      * @throws SimpleDatabaseExecuteException
      */
-    public function deleteMultiple($table, array $entities)
+    public function deleteMultiple($table, array $entities): bool
     {
         $keys = $this->getInsertKeys($entities[0]);
 
@@ -408,10 +451,10 @@ class SimpleDatabase
             $entityValues[] = $this->getInsertData($entity);
         }
 
-        $values = '('.join("), \n(", $entityValues).')';
+        $values = '(' . join("), \n(", $entityValues) . ')';
 
         $sql = "DELETE FROM `{$table}` WHERE ({$keys}) IN ({$values});";
-        
+
         $this->executeQuery($sql);
 
         return true;
@@ -423,23 +466,23 @@ class SimpleDatabase
      * @return PDOStatement
      * @throws SimpleDatabaseExecuteException
      */
-    public function truncateTable($table)
+    public function truncateTable($table): PDOStatement
     {
         return $this->executeQuery("TRUNCATE `{$table}`;");
     }
 
     /**
-     * @throws SimpleDatabaseExecuteException
+     * @return PDOStatement
      */
-    public function disableForeignKeyChecks()
+    public function disableForeignKeyChecks(): PDOStatement
     {
         $this->executeQuery("SET foreign_key_checks = 0;");
     }
 
     /**
-     * @throws SimpleDatabaseExecuteException
+     * @return PDOStatement
      */
-    public function enableForeignKeyChecks()
+    public function enableForeignKeyChecks(): PDOStatement
     {
         $this->executeQuery("SET foreign_key_checks = 1;");
     }
@@ -500,5 +543,14 @@ class SimpleDatabase
     public function dropTable($tableName)
     {
         $this->executeQuery("DROP TABLE `{$tableName}`;");
+    }
+
+    /**
+     * This method define if we are able to use separate read/write PDO object.
+     * @return bool
+     */
+    public function isReadWriteSeparationEnabled()
+    {
+        return $this->readOnlyPdo !== null;
     }
 }
