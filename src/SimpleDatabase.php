@@ -474,7 +474,7 @@ class SimpleDatabase
     /**
      * @return PDOStatement
      */
-    public function disableForeignKeyChecks(): PDOStatement
+    public function disableForeignKeyChecks()
     {
         $this->executeQuery("SET foreign_key_checks = 0;");
     }
@@ -482,7 +482,7 @@ class SimpleDatabase
     /**
      * @return PDOStatement
      */
-    public function enableForeignKeyChecks(): PDOStatement
+    public function enableForeignKeyChecks()
     {
         $this->executeQuery("SET foreign_key_checks = 1;");
     }
