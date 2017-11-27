@@ -116,7 +116,7 @@ class SimpleDatabase
      * @throws NoRecordsFoundException
      * @throws SimpleDatabaseExecuteException
      */
-    public function getColumn($sql, array $params = [], $columnId = 0, $optional = false): string
+    public function getColumn($sql, array $params = [], $columnId = 0, $optional = false): ?string
     {
         $query = $this->executeQuery($sql, $params);
 

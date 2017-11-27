@@ -130,6 +130,21 @@ class SimpleDatabaseTest extends PHPUnit_Framework_TestCase
         $this->assertSame($data[0], $db->getColumn($sql, $params));
     }
 
+    public function testGetColumnWithOptional()
+    {
+        $sql = "SQL";
+        $data = [null];
+
+        $this->pdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
+        $this->statement->expects($this->once())->method('execute')->willReturn(true);
+        $this->statement->expects($this->once())->method('rowCount')->willReturn(1);
+        $this->statement->expects($this->once())->method('fetchColumn')->with(0)->willReturn($data[0]);
+
+        $db = new SimpleDatabase($this->pdo, $this->logger);
+
+        $this->assertSame($data[0], $db->getColumn($sql, [], 0, true));
+    }
+
     public function testGetColumnWithReadPdo()
     {
         $sql = "SELECT `column` FROM `table`";
