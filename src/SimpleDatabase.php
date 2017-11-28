@@ -244,6 +244,14 @@ class SimpleDatabase
 
         return $result;
     }
+    
+    /**
+     * @return bool
+     */
+    public function inTransaction(): bool
+    {
+        return $this->pdo->inTransaction();
+    }
 
     /**
      * @return PDO
@@ -286,14 +294,6 @@ class SimpleDatabase
         } else {
             return $this->getWritePdo();
         }
-    }
-
-    /**
-     * @return bool
-     */
-    public function inTransaction(): bool
-    {
-        return $this->pdo->inTransaction();
     }
 
     /**
