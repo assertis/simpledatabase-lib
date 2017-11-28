@@ -289,6 +289,14 @@ class SimpleDatabase
     }
 
     /**
+     * @return bool
+     */
+    public function inTransaction(): bool
+    {
+        return $this->pdo->inTransaction();
+    }
+
+    /**
      * @return LoggerInterface
      */
     protected function getLogger(): LoggerInterface
