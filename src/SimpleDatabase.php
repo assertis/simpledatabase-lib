@@ -13,11 +13,11 @@ use Psr\Log\LoggerInterface;
 class SimpleDatabase
 {
     /**
-     * @var PDO
+     * @var SimpleDatabasePdo
      */
     private $pdo;
     /**
-     * @var PDO
+     * @var SimpleDatabasePdo
      */
     private $readOnlyPdo;
     /**
@@ -30,10 +30,10 @@ class SimpleDatabase
     private $queryLogger;
 
     /**
-     * @param PDO $pdo
+     * @param SimpleDatabasePdo $pdo
      * @param LoggerInterface $logger
      * @param bool $logQueries
-     * @param PDO|null $readOnlyPDO
+     * @param SimpleDatabasePdo|null $readOnlyPDO
      *  If this parameter is passed, then read/write separation will be enabled. $pdo parameter will be the one
      *  responsible for write operations, and $readOnlyPDO will be connection responsible for reading data.
      */
@@ -560,5 +560,13 @@ class SimpleDatabase
     public function isReadWriteSeparationEnabled()
     {
         return $this->readOnlyPdo !== null;
+    }
+
+    /**
+     * @return bool
+     */
+    public function resetConnection(): bool
+    {
+        return true;
     }
 }
