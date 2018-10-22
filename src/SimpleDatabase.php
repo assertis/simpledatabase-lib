@@ -244,7 +244,7 @@ class SimpleDatabase
 
         return $result;
     }
-    
+
     /**
      * @return bool
      */
@@ -567,6 +567,23 @@ class SimpleDatabase
      */
     public function resetConnection(): bool
     {
-        return true;
+        if ($this->pdo instanceof SimpleDatabasePdo) {
+            $this->pdo = new PDO(
+                $this->pdo->getDsn(),
+                $this->pdo->getUsername(),
+                $this->pdo->getPassword(),
+                $this->pdo->getOptions()
+            );
+            if ($this->readOnlyPdo instanceof SimpleDatabasePdo) {
+                $this->readOnlyPdo = new PDO(
+                    $this->readOnlyPdo->getDsn(),
+                    $this->readOnlyPdo->getUsername(),
+                    $this->readOnlyPdo->getPassword(),
+                    $this->readOnlyPdo->getOptions()
+                );
+            }
+            return true;
+        }
+        return false;
     }
 }
