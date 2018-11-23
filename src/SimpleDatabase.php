@@ -14,7 +14,6 @@ use Psr\Log\LoggerInterface;
 class SimpleDatabase
 {
 
-    const DUPLICATE_IN_CHUNKS_LIMIT = 100000;
     /**
      * @var SimpleDatabasePdo
      */
