@@ -509,42 +509,16 @@ class SimpleDatabase
     {
         $this->executeQuery("CREATE TABLE IF NOT EXISTS `{$newTableName}` LIKE `{$tableName}`;");
         if ($withData) {
-            $this->truncateTable($newTableName);
-
-            $row = $this->getRow("SELECT COUNT(*) AS records_amount FROM `{$tableName}`");
-            if($row['records_amount'] > self::DUPLICATE_IN_CHUNKS_LIMIT) {
-                $this->duplicateTableWithChuncks($tableName, $newTableName, $row['records_amount']);
-                return;
-            }
-            $this->executeQuery("INSERT INTO `{$newTableName}` SELECT * FROM `{$tableName}`;");
+            $tmpTableName = '_old_'.$newTableName;
+            $this->renameTable($newTableName, $tmpTableName);
+            $this->renameTable($tableName, $newTableName);
+            $this->dropTable($tmpTableName);
         }
     }
 
-    /**
-     * For tables with over 100 000 (DUPLICATE_IN_CHUCNKS_LIMIT constant) records we don't want to make CPU explode
-     * so we divide inserting into query to small chunks.
-     * @param $tableName
-     * @param $newTableName
-     * @param $recordsAmount
-     * @throws SimpleDatabaseExecuteException
-     */
-    private function duplicateTableWithChuncks($tableName, $newTableName, $recordsAmount)
+    public function renameTable($currentName, $newName)
     {
-        $offset = 0;
-        $size = 10000;
-        try {
-            $this->startTransaction();
-            do {
-                $this->executeQuery('INSERT INTO `' . $newTableName . '` SELECT * FROM `' . $tableName . '` LIMIT ' . $offset . ',' . $size);
-                $offset += $size;
-                $recordsAmount -= $size;
-            } while ($recordsAmount > 0);
-            $this->commitTransaction();
-        }catch(PDOException $err) {
-            $this->logger->critical($err->getMessage());
-            $this->rollbackTransaction();
-            throw new $err;
-        }
+        $this->executeQuery("RENAME TABLE `{$currentName}` TO `{$newName}`");
     }
 
     /**
