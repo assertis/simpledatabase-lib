@@ -4,6 +4,7 @@ namespace Assertis\SimpleDatabase;
 
 use Exception;
 use PDO;
+use PDOException;
 use PDOStatement;
 use Psr\Log\LoggerInterface;
 
@@ -506,8 +507,33 @@ class SimpleDatabase
     {
         $this->executeQuery("CREATE TABLE IF NOT EXISTS `{$newTableName}` LIKE `{$tableName}`;");
         if ($withData) {
+            $row = $this->getRow("SELECT COUNT(*) AS records_amount FROM `{$tableName}`");
+            if($row['records_amount'] > 10000) {
+                echo 'Chuncking'.PHP_EOL;
+                $this->duplicateTableWithChuncks($tableName, $newTableName, $row['records_amount']);
+                return;
+            }
             $this->truncateTable($newTableName);
             $this->executeQuery("INSERT INTO `{$newTableName}` SELECT * FROM `{$tableName}`;");
+        }
+    }
+
+    private function duplicateTableWithChuncks($tableName, $newTableName, $recordsAmount)
+    {
+        $this->truncateTable($newTableName);
+        $offset = 0;
+        $size = 10000;
+        try {
+            $this->startTransaction();
+            do {
+                $this->executeQuery('INSERT INTO `' . $newTableName . '` SELECT * FROM `' . $tableName . '` LIMIT ' . $offset . ',' . $size);
+                $offset += $size;
+                $recordsAmount -= $size;
+            } while ($recordsAmount > 0);
+            $this->commitTransaction();
+        }catch(PDOException $err) {
+            $this->rollbackTransaction();
+            throw new $err;
         }
     }
 
