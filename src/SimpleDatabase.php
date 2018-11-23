@@ -510,7 +510,6 @@ class SimpleDatabase
             $tmpTableName = '_old_'.$newTableName;
             $this->renameTable($newTableName, $tmpTableName);
             $this->renameTable($tableName, $newTableName);
-            $this->dropTable($tmpTableName);
         }
     }
 
