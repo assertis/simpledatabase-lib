@@ -276,23 +276,26 @@ class SimpleDatabaseTest extends PHPUnit_Framework_TestCase
     public function testDuplicateTableWithData()
     {
         $createSql = "CREATE TABLE IF NOT EXISTS `new_table` LIKE `table`;";
-        $clearSql = "TRUNCATE `new_table`;";
-        $insertSql = "INSERT INTO `new_table` SELECT * FROM `table`;";
-        
+        $firstRename = "RENAME TABLE `new_table` TO `_old_new_table`";
+        $secondRename = "RENAME TABLE `table` TO `new_table`";
+        $dropSql = "DROP TABLE `_old_new_table`;";
+
         $statements = [
+            $this->createMock(PDOStatementMock::class),
             $this->createMock(PDOStatementMock::class),
             $this->createMock(PDOStatementMock::class),
             $this->createMock(PDOStatementMock::class),
         ];
 
-        $this->pdo->expects($this->exactly(3))
+        $this->pdo->expects($this->exactly(4))
             ->method('prepare')
-            ->withConsecutive([$createSql], [$clearSql], [$insertSql])
-            ->willReturnOnConsecutiveCalls($statements[0], $statements[1], $statements[2]);
+            ->withConsecutive([$createSql], [$firstRename], [$secondRename], [$dropSql])
+            ->willReturnOnConsecutiveCalls($statements[0], $statements[1], $statements[2], $statements[3]);
 
         $statements[0]->expects($this->once())->method('execute')->willReturn(true);
         $statements[1]->expects($this->once())->method('execute')->willReturn(true);
         $statements[2]->expects($this->once())->method('execute')->willReturn(true);
+        $statements[3]->expects($this->once())->method('execute')->willReturn(true);
 
         $db = new SimpleDatabase($this->pdo, $this->logger);
 

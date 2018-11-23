@@ -12,6 +12,7 @@ use Psr\Log\LoggerInterface;
  */
 class SimpleDatabase
 {
+
     /**
      * @var SimpleDatabasePdo
      */
@@ -506,9 +507,16 @@ class SimpleDatabase
     {
         $this->executeQuery("CREATE TABLE IF NOT EXISTS `{$newTableName}` LIKE `{$tableName}`;");
         if ($withData) {
-            $this->truncateTable($newTableName);
-            $this->executeQuery("INSERT INTO `{$newTableName}` SELECT * FROM `{$tableName}`;");
+            $tmpTableName = '_old_'.$newTableName;
+            $this->renameTable($newTableName, $tmpTableName);
+            $this->renameTable($tableName, $newTableName);
+            $this->dropTable($tmpTableName);
         }
+    }
+
+    public function renameTable($currentName, $newName)
+    {
+        $this->executeQuery("RENAME TABLE `{$currentName}` TO `{$newName}`");
     }
 
     /**
