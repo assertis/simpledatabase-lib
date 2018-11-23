@@ -13,6 +13,8 @@ use Psr\Log\LoggerInterface;
  */
 class SimpleDatabase
 {
+
+    const DUPLICATE_IN_CHUNKS_LIMIT = 100000;
     /**
      * @var SimpleDatabasePdo
      */
@@ -507,20 +509,27 @@ class SimpleDatabase
     {
         $this->executeQuery("CREATE TABLE IF NOT EXISTS `{$newTableName}` LIKE `{$tableName}`;");
         if ($withData) {
+            $this->truncateTable($newTableName);
+
             $row = $this->getRow("SELECT COUNT(*) AS records_amount FROM `{$tableName}`");
-            if($row['records_amount'] > 10000) {
-                echo 'Chuncking'.PHP_EOL;
+            if($row['records_amount'] > self::DUPLICATE_IN_CHUNKS_LIMIT) {
                 $this->duplicateTableWithChuncks($tableName, $newTableName, $row['records_amount']);
                 return;
             }
-            $this->truncateTable($newTableName);
             $this->executeQuery("INSERT INTO `{$newTableName}` SELECT * FROM `{$tableName}`;");
         }
     }
 
+    /**
+     * For tables with over 100 000 (DUPLICATE_IN_CHUCNKS_LIMIT constant) records we don't want to make CPU explode
+     * so we divide inserting into query to small chunks.
+     * @param $tableName
+     * @param $newTableName
+     * @param $recordsAmount
+     * @throws SimpleDatabaseExecuteException
+     */
     private function duplicateTableWithChuncks($tableName, $newTableName, $recordsAmount)
     {
-        $this->truncateTable($newTableName);
         $offset = 0;
         $size = 10000;
         try {
@@ -532,6 +541,7 @@ class SimpleDatabase
             } while ($recordsAmount > 0);
             $this->commitTransaction();
         }catch(PDOException $err) {
+            $this->logger->critical($err->getMessage());
             $this->rollbackTransaction();
             throw new $err;
         }
