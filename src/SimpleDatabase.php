@@ -4,7 +4,6 @@ namespace Assertis\SimpleDatabase;
 
 use Exception;
 use PDO;
-use PDOException;
 use PDOStatement;
 use Psr\Log\LoggerInterface;
 
