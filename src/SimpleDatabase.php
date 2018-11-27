@@ -507,9 +507,8 @@ class SimpleDatabase
     {
         $this->executeQuery("CREATE TABLE IF NOT EXISTS `{$newTableName}` LIKE `{$tableName}`;");
         if ($withData) {
-            $tmpTableName = '_old_'.$newTableName;
-            $this->renameTable($newTableName, $tmpTableName);
-            $this->renameTable($tableName, $newTableName);
+            $this->truncateTable($newTableName);
+            $this->executeQuery("INSERT INTO `{$newTableName}` SELECT * FROM `{$tableName}`;");
         }
     }
 
