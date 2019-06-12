@@ -12,7 +12,7 @@
   },
   "extra": {
     "branch-alias": {
-      "dev-master": "1.0.x-dev"
+      "dev-master": "4.0.x-dev"
     }
   },
   "require": {
@@ -21,6 +21,7 @@
     "psr/log": "^1.0"
   },
   "require-dev": {
+    "symfony/var-dumper": "^3.3",
     "phpunit/phpunit": "^5.5"
   }
 }
