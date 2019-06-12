@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Assertis\SimpleDatabase;
 
 use PDO;
+use PDOException;
 
 /**
  * @author  Michał Tatarynowicz <michal@assertis.co.uk>
@@ -66,7 +67,12 @@ class SimplePdoFactory
 
     public function isDisconnected(PDO $pdo): bool
     {
-        return $pdo->errorCode() === self::MYSQL_ERROR_DISCONNECTED;
+        try {
+            $pdo->query('SELECT 1')->fetchAll();
+            return false;
+        } catch (PDOException $exception) {
+            return true;
+        }
     }
 
     public function reconnect(PDO $pdo): bool

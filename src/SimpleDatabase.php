@@ -67,7 +67,7 @@ class SimpleDatabase
      * @return PDOStatement
      * @throws SimpleDatabaseExecuteException
      */
-    public function executeQuery(string $sql, array $params = [], int $retries = 1): PDOStatement
+    public function executeQuery(string $sql, array $params = [], int $retries = 3): PDOStatement
     {
         $pdo = $this->simplePdo->getPdo($sql);
         $query = $pdo->prepare($sql);
@@ -81,8 +81,11 @@ class SimpleDatabase
                 $errorInfo = $query->errorInfo();
             }
         } catch (PDOException $ex) {
-            if ($retries > 0 && $this->simplePdo->reconnect($pdo)) {
-                return $this->executeQuery($sql, $params, $retries - 1);
+            if ($retries > 0) {
+                sleep(1);
+                if ($this->simplePdo->reconnect($pdo)) {
+                    return $this->executeQuery($sql, $params, $retries - 1);
+                }
             }
 
             $errorInfo = $ex->errorInfo;
