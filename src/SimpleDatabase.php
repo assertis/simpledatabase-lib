@@ -321,11 +321,11 @@ class SimpleDatabase
     public function quote($item): string
     {
         if (is_array($item)) {
-            return $this->simplePdo->quote(implode(',', $item));
+            return $this->simplePdo->getPdo()->quote(implode(',', $item));
         } elseif ($item === null) {
             return 'NULL';
         } else {
-            return $this->simplePdo->quote($item);
+            return $this->simplePdo->getPdo()->quote($item);
         }
     }
 

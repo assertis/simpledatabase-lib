@@ -85,9 +85,4 @@ class SimplePdoFactory
 
         return true;
     }
-
-    public function quote(string $string): string
-    {
-        return $this->getSlavePdo()->quote($string);
-    }
 }
