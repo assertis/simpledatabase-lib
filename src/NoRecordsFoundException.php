@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Assertis\SimpleDatabase;
 
@@ -7,14 +8,13 @@ namespace Assertis\SimpleDatabase;
  */
 class NoRecordsFoundException extends SimpleDatabaseConstraintException
 {
-
-    const MESSAGE = "No records were found using SQL: %s";
+    private const MESSAGE = 'No records were found using SQL: %s';
 
     /**
      * @param string $sql
      * @param array $params
      */
-    public function __construct($sql, $params)
+    public function __construct(string $sql, array $params)
     {
         $message = sprintf(self::MESSAGE, SimpleDatabase::resolveQuery($sql, $params));
         parent::__construct($message, $sql, $params);

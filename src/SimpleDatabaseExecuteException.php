@@ -1,16 +1,12 @@
 <?php
+declare(strict_types=1);
 
 namespace Assertis\SimpleDatabase;
 
-/**
- * Class SimpleDatabaseExecuteException
- * @package Assertis\Util
- */
 class SimpleDatabaseExecuteException extends SimpleDatabaseException
 {
-
-    const MESSAGE = "Could not execute an SQL query.";
-    const CODE = 500;
+    private const MESSAGE = 'Could not execute an SQL query.';
+    private const CODE = 500;
 
     /**
      * @var string
@@ -25,41 +21,27 @@ class SimpleDatabaseExecuteException extends SimpleDatabaseException
      */
     private $errorInfo;
 
-    /**
-     * @param array $errorInfo
-     * @param string $sql
-     * @param array $params
-     */
-    public function __construct($errorInfo, $sql, $params)
+    public function __construct(array $errorInfo, string $sql, array $params)
     {
         parent::__construct(self::MESSAGE, self::CODE);
+
         $this->errorInfo = $errorInfo;
         $this->sql = $sql;
         $this->params = $params;
     }
 
-    /**
-     * @return string
-     */
-    public function getSql()
+    public function getSql(): string
     {
         return $this->sql;
     }
 
-    /**
-     * @return array
-     */
-    public function getParams()
+    public function getParams(): array
     {
         return $this->params;
     }
 
-    /**
-     * @return array
-     */
-    public function getErrorInfo()
+    public function getErrorInfo(): array
     {
         return $this->errorInfo;
     }
-
 }

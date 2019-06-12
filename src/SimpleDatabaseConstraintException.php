@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Assertis\SimpleDatabase;
 
@@ -7,7 +8,6 @@ namespace Assertis\SimpleDatabase;
  */
 class SimpleDatabaseConstraintException extends SimpleDatabaseException
 {
-
     /**
      * @var string
      */
@@ -18,56 +18,36 @@ class SimpleDatabaseConstraintException extends SimpleDatabaseException
      */
     private $params;
 
-    /**
-     * @param string $message
-     * @param string $sql
-     * @param array $params
-     */
-    public function __construct($message, $sql, $params)
+    public function __construct(string $message, string $sql, array $params)
     {
-        parent::__construct($message, 0, null); // TODO: Change the auto-generated stub
+        parent::__construct($message);
+
         $this->sql = $sql;
         $this->params = $params;
     }
 
-    /**
-     * @return string
-     */
-    public function getSql()
+    public function getSql(): string
     {
         return $this->sql;
     }
 
-    /**
-     * @param string $sql
-     */
-    public function setSql($sql)
+    public function setSql(string $sql): void
     {
         $this->sql = $sql;
     }
 
-    /**
-     * @return array
-     */
-    public function getParams()
+    public function getParams(): array
     {
         return $this->params;
     }
 
-    /**
-     * @param array $params
-     */
-    public function setParams($params)
+    public function setParams(array $params): void
     {
         $this->params = $params;
     }
 
-    /**
-     * @return string
-     */
-    public function getResolvedQuery()
+    public function getResolvedQuery(): string
     {
         return SimpleDatabase::resolveQuery($this->sql, $this->params);
     }
-
 }

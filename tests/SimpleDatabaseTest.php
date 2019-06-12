@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Assertis\SimpleDatabase;
 
@@ -14,11 +15,14 @@ use Test\PDOStatementMock;
  */
 class SimpleDatabaseTest extends PHPUnit_Framework_TestCase
 {
-
     /**
      * @var PDO|PHPUnit_Framework_MockObject_MockObject
      */
     private $pdo;
+    /**
+     * @var SimplePdoFactory|PHPUnit_Framework_MockObject_MockObject
+     */
+    private $pdoFactory;
     /**
      * @var LoggerInterface|PHPUnit_Framework_MockObject_MockObject
      */
@@ -31,424 +35,267 @@ class SimpleDatabaseTest extends PHPUnit_Framework_TestCase
     public function setUp()
     {
         $this->pdo = $this->createMock(PDOMock::class);
+        $this->pdoFactory = $this->createMock(SimplePdoFactory::class);
         $this->statement = $this->createMock(PDOStatementMock::class);
         $this->logger = $this->createMock(LoggerInterface::class);
     }
 
-    public function testExecuteQuery()
+    public function testExecuteQuery(): void
     {
-        $sql = "SQL";
+        $sql = 'SQL';
         $params = ['foo' => 'bar'];
 
-        $this->pdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
-        $this->statement->expects($this->once())->method('execute')->with($params)->willReturn(true);
+        $this->pdoFactory->expects(self::once())->method('getPdo')->with($sql)->willReturn($this->pdo);
+        $this->pdo->expects(static::once())->method('prepare')->with($sql)->willReturn($this->statement);
+        $this->statement->expects(static::once())->method('execute')->with($params)->willReturn(true);
 
-        $db = new SimpleDatabase($this->pdo, $this->logger);
+        $db = new SimpleDatabase($this->pdoFactory, $this->logger);
 
-        $this->assertSame($this->statement, $db->executeQuery($sql, $params));
+        static::assertSame($this->statement, $db->executeQuery($sql, $params));
     }
 
-    /**
-     * @expectedException \Assertis\SimpleDatabase\SimpleDatabaseExecuteException
-     */
-    public function testExecuteQueryThrowsExceptionOnExecuteError()
+    public function testExecuteQueryThrowsExceptionOnExecuteError(): void
     {
-        $sql = "SQL";
+        $sql = 'SQL';
         $params = ['foo' => 'bar'];
 
-        $this->pdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
-        $this->statement->expects($this->once())->method('execute')->with($params)->willReturn(false);
-        $this->logger->expects($this->once())->method('error');
+        $this->pdoFactory->expects(self::once())->method('getPdo')->with($sql)->willReturn($this->pdo);
+        $this->pdo->expects(static::once())->method('prepare')->with($sql)->willReturn($this->statement);
+        $this->statement->expects(static::once())->method('execute')->with($params)->willReturn(false);
+        $this->statement->expects(static::once())->method('errorInfo')->willReturn(['error', 1, 'error']);
+        $this->logger->expects(static::once())->method('error');
 
-        $db = new SimpleDatabase($this->pdo, $this->logger);
+        $this->expectException(SimpleDatabaseExecuteException::class);
+
+        $db = new SimpleDatabase($this->pdoFactory, $this->logger);
         $db->executeQuery($sql, $params);
     }
 
-    public function testExecuteQueryWithReadPdoUsage()
+    public function testGetColumn(): void
     {
-        $sql = "SELECT * FROM `table`";
-        $this->statement->expects($this->once())->method('execute')->willReturn(true);
-
-        $readPDO = $this->createMock(PDOMock::class);
-        $readPDO->expects($this->once())->method('prepare')->willReturn($this->statement);
-
-        $this->pdo->expects($this->exactly(0))->method('prepare')->with($sql)->willReturn($this->statement);
-        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPDO);
-        $db->executeQuery($sql);
-    }
-
-    public function testExecuteQueryWithReadWriteModeEnabled()
-    {
-        $sql = "INSERT INTO `table` VALUES (1,2,3)";
-        $this->statement->expects($this->once())->method('execute')->willReturn(true);
-
-        $readPDO = $this->createMock(PDOMock::class);
-        $readPDO->expects($this->exactly(0))->method('prepare')->willReturn($this->statement);
-
-        $this->pdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
-        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPDO);
-        $db->executeQuery($sql);
-    }
-
-    public function testIsReadWriteSeparationEnabled()
-    {
-        $readPDO = $this->createMock(PDOMock::class);
-        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPDO);
-
-        $this->assertTrue($db->isReadWriteSeparationEnabled());
-
-        $db = new SimpleDatabase($this->pdo, $this->logger);
-        $this->assertFalse($db->isReadWriteSeparationEnabled());
-    }
-
-    public function testGetPdoBasedOnQueryType()
-    {
-        $readPDO = $this->createMock(PDOMock::class);
-        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPDO);
-
-        $this->assertSame($readPDO, $db->getPdoBasedOnQueryType("SELECT * FROM `users`"));
-        $this->assertSame($this->pdo, $db->getPdoBasedOnQueryType("INSERT INTO `users` VALUES (1,2)"));
-        $this->assertSame($this->pdo, $db->getPdoBasedOnQueryType("UPDATE `users` SET `password`='admin1' WHERE `id`=1"));
-        $this->assertSame($this->pdo, $db->getPdoBasedOnQueryType("DELETE FROM `users` WHERE `id`=1"));
-        $this->assertSame($this->pdo, $db->getPdoBasedOnQueryType("REPLACE INTO `users` VALUES (1, 'admin', 'password')"));
-        $this->assertSame($this->pdo, $db->getPdoBasedOnQueryType("SET foreign_key_checks=0"));
-    }
-
-    public function testGetColumn()
-    {
-        $sql = "SQL";
+        $sql = 'SQL';
         $params = ['foo' => 'bar'];
         $data = ['baz', 'boo'];
 
-        $this->pdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
-        $this->statement->expects($this->once())->method('execute')->with($params)->willReturn(true);
-        $this->statement->expects($this->once())->method('rowCount')->willReturn(1);
-        $this->statement->expects($this->once())->method('fetchColumn')->with(0)->willReturn($data[0]);
+        $this->pdoFactory->expects(self::once())->method('getPdo')->with($sql)->willReturn($this->pdo);
+        $this->pdo->expects(static::once())->method('prepare')->with($sql)->willReturn($this->statement);
+        $this->statement->expects(static::once())->method('execute')->with($params)->willReturn(true);
+        $this->statement->expects(static::once())->method('rowCount')->willReturn(1);
+        $this->statement->expects(static::once())->method('fetchColumn')->with(0)->willReturn($data[0]);
 
-        $db = new SimpleDatabase($this->pdo, $this->logger);
+        $db = new SimpleDatabase($this->pdoFactory, $this->logger);
 
-        $this->assertSame($data[0], $db->getColumn($sql, $params));
+        static::assertSame($data[0], $db->getColumn($sql, $params));
     }
 
-    public function testGetColumnWithOptional()
+    public function testGetColumnWithOptional(): void
     {
-        $sql = "SQL";
+        $sql = 'SQL';
         $data = [null];
 
-        $this->pdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
-        $this->statement->expects($this->once())->method('execute')->willReturn(true);
-        $this->statement->expects($this->once())->method('rowCount')->willReturn(1);
-        $this->statement->expects($this->once())->method('fetchColumn')->with(0)->willReturn($data[0]);
+        $this->pdoFactory->expects(self::once())->method('getPdo')->with($sql)->willReturn($this->pdo);
+        $this->pdo->expects(static::once())->method('prepare')->with($sql)->willReturn($this->statement);
+        $this->statement->expects(static::once())->method('execute')->willReturn(true);
+        $this->statement->expects(static::once())->method('rowCount')->willReturn(1);
+        $this->statement->expects(static::once())->method('fetchColumn')->with(0)->willReturn($data[0]);
 
-        $db = new SimpleDatabase($this->pdo, $this->logger);
+        $db = new SimpleDatabase($this->pdoFactory, $this->logger);
 
-        $this->assertSame($data[0], $db->getColumn($sql, [], 0, true));
+        static::assertSame($data[0], $db->getColumn($sql, [], 0, true));
     }
 
-    public function testGetColumnWithReadPdo()
+    public function testGetColumnThrowsExceptionOnNoResults(): void
     {
-        $sql = "SELECT `column` FROM `table`";
-        $params = ['foo' => 'bar'];
-        $data = ['baz', 'boo'];
-
-        $this->statement->expects($this->once())->method('execute')->with($params)->willReturn(true);
-        $this->statement->expects($this->once())->method('rowCount')->willReturn(1);
-        $this->statement->expects($this->once())->method('fetchColumn')->with(0)->willReturn($data[0]);
-
-        $readPdo = $this->createMock(PDOMock::class);
-        $readPdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
-        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPdo);
-
-        $this->assertSame($data[0], $db->getColumn($sql, $params));
-    }
-
-    /**
-     * @expectedException \Assertis\SimpleDatabase\SimpleDatabaseConstraintException
-     */
-    public function testGetColumnThrowsExceptionOnNoResults()
-    {
-        $sql = "SQL";
+        $sql = 'SQL';
         $params = ['foo' => 'bar'];
 
-        $this->pdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
-        $this->statement->expects($this->once())->method('execute')->with($params)->willReturn(true);
-        $this->statement->expects($this->once())->method('rowCount')->willReturn(0);
+        $this->pdoFactory->expects(self::once())->method('getPdo')->with($sql)->willReturn($this->pdo);
+        $this->pdo->expects(static::once())->method('prepare')->with($sql)->willReturn($this->statement);
+        $this->statement->expects(static::once())->method('execute')->with($params)->willReturn(true);
+        $this->statement->expects(static::once())->method('rowCount')->willReturn(0);
 
-        $db = new SimpleDatabase($this->pdo, $this->logger);
+        $this->expectException(SimpleDatabaseConstraintException::class);
+
+        $db = new SimpleDatabase($this->pdoFactory, $this->logger);
         $db->getColumn($sql, $params);
     }
 
-    public function testGetRow()
+    public function testGetRow(): void
     {
-        $sql = "SQL";
+        $sql = 'SQL';
         $params = ['foo' => 'bar'];
         $data = ['baz', 'boo'];
 
-        $this->pdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
-        $this->statement->expects($this->once())->method('execute')->with($params)->willReturn(true);
-        $this->statement->expects($this->once())->method('rowCount')->willReturn(1);
-        $this->statement->expects($this->once())->method('fetch')->willReturn($data);
+        $this->pdoFactory->expects(self::once())->method('getPdo')->with($sql)->willReturn($this->pdo);
+        $this->pdo->expects(static::once())->method('prepare')->with($sql)->willReturn($this->statement);
+        $this->statement->expects(static::once())->method('execute')->with($params)->willReturn(true);
+        $this->statement->expects(static::once())->method('rowCount')->willReturn(1);
+        $this->statement->expects(static::once())->method('fetch')->willReturn($data);
 
-        $db = new SimpleDatabase($this->pdo, $this->logger);
+        $db = new SimpleDatabase($this->pdoFactory, $this->logger);
 
-        $this->assertSame($data, $db->getRow($sql, $params));
+        static::assertSame($data, $db->getRow($sql, $params));
     }
 
-    public function testGetRowWithReadPdo()
+    public function testGetRowThrowsExceptionOnNoResults(): void
     {
-        $sql = "SELECT * FROM `table`";
-        $params = ['foo' => 'bar'];
-        $data = ['baz', 'boo'];
-
-        $this->statement->expects($this->once())->method('execute')->with($params)->willReturn(true);
-        $this->statement->expects($this->once())->method('rowCount')->willReturn(1);
-        $this->statement->expects($this->once())->method('fetch')->willReturn($data);
-
-        $readPdo = $this->createMock(PDOMock::class);
-        $readPdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
-        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPdo);
-
-        $this->assertSame($data, $db->getRow($sql, $params));
-    }
-
-    /**
-     * @expectedException \Assertis\SimpleDatabase\SimpleDatabaseConstraintException
-     */
-    public function testGetRowThrowsExceptionOnNoResults()
-    {
-        $sql = "SQL";
+        $sql = 'SQL';
         $params = ['foo' => 'bar'];
 
-        $this->pdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
-        $this->statement->expects($this->once())->method('execute')->with($params)->willReturn(true);
-        $this->statement->expects($this->once())->method('rowCount')->willReturn(0);
+        $this->pdoFactory->expects(self::once())->method('getPdo')->with($sql)->willReturn($this->pdo);
+        $this->pdo->expects(static::once())->method('prepare')->with($sql)->willReturn($this->statement);
+        $this->statement->expects(static::once())->method('execute')->with($params)->willReturn(true);
+        $this->statement->expects(static::once())->method('rowCount')->willReturn(0);
 
-        $db = new SimpleDatabase($this->pdo, $this->logger);
+        $this->expectException(SimpleDatabaseConstraintException::class);
+
+        $db = new SimpleDatabase($this->pdoFactory, $this->logger);
         $db->getRow($sql, $params);
     }
 
-    public function testGetAll()
+    public function testGetAll(): void
     {
-        $sql = "SELECT * FROM `table`";
+        $sql = 'SELECT * FROM `table`';
         $params = ['foo' => 'bar'];
         $data = [['baz', 'boo']];
         $fetchMode = 1234;
 
-        $this->statement->expects($this->once())->method('execute')->with($params)->willReturn(true);
-        $this->statement->expects($this->once())->method('fetchAll')->with($fetchMode)->willReturn($data);
+        $this->pdoFactory->expects(self::once())->method('getPdo')->with($sql)->willReturn($this->pdo);
+        $this->pdo->expects(static::once())->method('prepare')->with($sql)->willReturn($this->statement);
+        $this->statement->expects(static::once())->method('execute')->with($params)->willReturn(true);
+        $this->statement->expects(static::once())->method('fetchAll')->with($fetchMode)->willReturn($data);
 
-        $readPdo = $this->createMock(PDOMock::class);
-        $readPdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
-        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPdo);
+        $db = new SimpleDatabase($this->pdoFactory, $this->logger);
 
-        $this->assertSame($data, $db->getAll($sql, $params, $fetchMode));
+        static::assertSame($data, $db->getAll($sql, $params, $fetchMode));
     }
 
-    public function testListTablesStartsWith()
+    public function testListTablesStartsWith(): void
     {
         $prefix = 'pref';
         $sql = "SHOW TABLES LIKE '$prefix%';";
         $tables = ['prefactor', 'predator'];
 
-        $this->pdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
-        $this->statement->expects($this->once())->method('execute')->willReturn(true);
-        $this->statement->expects($this->once())->method('fetchAll')->with(PDO::FETCH_COLUMN)->willReturn($tables);
+        $this->pdoFactory->expects(self::once())->method('getPdo')->with($sql)->willReturn($this->pdo);
+        $this->pdo->expects(static::once())->method('prepare')->with($sql)->willReturn($this->statement);
+        $this->statement->expects(static::once())->method('execute')->willReturn(true);
+        $this->statement->expects(static::once())->method('fetchAll')->with(PDO::FETCH_COLUMN)->willReturn($tables);
 
-        $db = new SimpleDatabase($this->pdo, $this->logger);
+        $db = new SimpleDatabase($this->pdoFactory, $this->logger);
 
-        $this->assertSame($tables, $db->listTablesStartsWith($prefix));
+        static::assertSame($tables, $db->listTablesStartsWith($prefix));
     }
 
-    public function testListAllTables()
+    public function testListAllTables(): void
     {
         $sql = "SHOW TABLES LIKE '%';";
         $tables = ['prefactor', 'predator', 'test'];
 
-        $this->pdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
-        $this->statement->expects($this->once())->method('execute')->willReturn(true);
-        $this->statement->expects($this->once())->method('fetchAll')->with(PDO::FETCH_COLUMN)->willReturn($tables);
+        $this->pdoFactory->expects(self::once())->method('getPdo')->with($sql)->willReturn($this->pdo);
+        $this->pdo->expects(static::once())->method('prepare')->with($sql)->willReturn($this->statement);
+        $this->statement->expects(static::once())->method('execute')->willReturn(true);
+        $this->statement->expects(static::once())->method('fetchAll')->with(PDO::FETCH_COLUMN)->willReturn($tables);
 
-        $db = new SimpleDatabase($this->pdo, $this->logger);
+        $db = new SimpleDatabase($this->pdoFactory, $this->logger);
 
-        $this->assertSame($tables, $db->listAllTables());
+        static::assertSame($tables, $db->listAllTables());
     }
 
-    public function testDuplicateTableWithData()
+    public function testDuplicateTableWithData(): void
     {
-        $createSql = "CREATE TABLE IF NOT EXISTS `new_table` LIKE `table`;";
-        $firstRename = "RENAME TABLE `new_table` TO `_old_new_table`";
-        $secondRename = "RENAME TABLE `table` TO `new_table`";
-        $dropSql = "DROP TABLE `_old_new_table`;";
+        $create = 'CREATE TABLE IF NOT EXISTS `new_table` LIKE `table`;';
+        $truncate = 'TRUNCATE `new_table`;';
+        $insert = 'INSERT INTO `new_table` SELECT * FROM `table`;';
 
         $statements = [
             $this->createMock(PDOStatementMock::class),
             $this->createMock(PDOStatementMock::class),
             $this->createMock(PDOStatementMock::class),
-            $this->createMock(PDOStatementMock::class),
         ];
 
-        $this->pdo->expects($this->exactly(4))
+        $this->pdoFactory->expects(static::exactly(3))
+            ->method('getPdo')
+            ->withConsecutive([$create], [$truncate], [$insert])
+            ->willReturn($this->pdo);
+
+        $this->pdo->expects(static::exactly(3))
             ->method('prepare')
-            ->withConsecutive([$createSql], [$firstRename], [$secondRename], [$dropSql])
-            ->willReturnOnConsecutiveCalls($statements[0], $statements[1], $statements[2], $statements[3]);
+            ->withConsecutive([$create], [$truncate], [$insert])
+            ->willReturnOnConsecutiveCalls($statements[0], $statements[1], $statements[2]);
 
-        $statements[0]->expects($this->once())->method('execute')->willReturn(true);
-        $statements[1]->expects($this->once())->method('execute')->willReturn(true);
-        $statements[2]->expects($this->once())->method('execute')->willReturn(true);
-        $statements[3]->expects($this->once())->method('execute')->willReturn(true);
+        $statements[0]->expects(static::once())->method('execute')->willReturn(true);
+        $statements[1]->expects(static::once())->method('execute')->willReturn(true);
+        $statements[2]->expects(static::once())->method('execute')->willReturn(true);
 
-        $db = new SimpleDatabase($this->pdo, $this->logger);
-
+        $db = new SimpleDatabase($this->pdoFactory, $this->logger);
         $db->duplicateTable('table', 'new_table', true);
     }
 
-    public function testDuplicateTableWithoutData()
+    public function testDuplicateTableWithoutData(): void
     {
-        $createSql = "CREATE TABLE IF NOT EXISTS `new_table` LIKE `table`;";
+        $sql = 'CREATE TABLE IF NOT EXISTS `new_table` LIKE `table`;';
 
-        $this->pdo->expects($this->once())
-            ->method('prepare')
-            ->with($createSql)
-            ->willReturn($this->statement);
+        $this->pdoFactory->expects(self::once())->method('getPdo')->with($sql)->willReturn($this->pdo);
+        $this->pdo->expects(static::once())->method('prepare')->with($sql)->willReturn($this->statement);
+        $this->statement->expects(static::once())->method('execute')->willReturn(true);
 
-        $this->statement->expects($this->once())->method('execute')->willReturn(true);
-
-        $db = new SimpleDatabase($this->pdo, $this->logger);
-
+        $db = new SimpleDatabase($this->pdoFactory, $this->logger);
         $db->duplicateTable('table', 'new_table');
     }
 
-    public function testDropTable()
+    public function testDropTable(): void
     {
-        $createSql = "DROP TABLE `new_table`;";
+        $sql = 'DROP TABLE `new_table`;';
 
-        $this->pdo->expects($this->once())
-            ->method('prepare')
-            ->with($createSql)
-            ->willReturn($this->statement);
+        $this->pdoFactory->expects(self::once())->method('getPdo')->with($sql)->willReturn($this->pdo);
+        $this->pdo->expects(static::once())->method('prepare')->with($sql)->willReturn($this->statement);
+        $this->statement->expects(static::once())->method('execute')->willReturn(true);
 
-        $this->statement->expects($this->once())
-            ->method('execute')
-            ->willReturn(true);
-
-        $db = new SimpleDatabase($this->pdo, $this->logger);
-
+        $db = new SimpleDatabase($this->pdoFactory, $this->logger);
         $db->dropTable('new_table');
     }
 
-    public function testGetColumnFromAllRows()
+    public function testGetColumnFromAllRows(): void
     {
-        $sql = "SQL";
+        $sql = 'SQL';
         $params = ['foo' => 'bar'];
         $data = [['baz', 'boo'], ['bing', 'bang']];
         $column = 1;
 
-        $this->pdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
-        $this->statement->expects($this->once())->method('execute')->with($params)->willReturn(true);
-        $this->statement->expects($this->once())->method('fetchAll')->willReturn($data);
+        $this->pdoFactory->expects(self::once())->method('getPdo')->with($sql)->willReturn($this->pdo);
+        $this->pdo->expects(static::once())->method('prepare')->with($sql)->willReturn($this->statement);
+        $this->statement->expects(static::once())->method('execute')->with($params)->willReturn(true);
+        $this->statement->expects(static::once())->method('fetchAll')->willReturn($data);
 
-        $db = new SimpleDatabase($this->pdo, $this->logger);
+        $db = new SimpleDatabase($this->pdoFactory, $this->logger);
 
-        $this->assertSame(
+        static::assertSame(
             [$data[0][$column], $data[1][$column]],
             $db->getColumnFromAllRows($sql, $params, $column)
         );
     }
 
-    public function testGetColumnFromAllRowsWithReadPdo()
-    {
-        $sql = "SELECT `column` FROM `table`";
-        $params = ['foo' => 'bar'];
-        $data = [['baz', 'boo'], ['bing', 'bang']];
-        $column = 1;
-
-        $this->statement->expects($this->once())->method('execute')->with($params)->willReturn(true);
-        $this->statement->expects($this->once())->method('fetchAll')->willReturn($data);
-
-        $readPdo = $this->createMock(PDOMock::class);
-        $readPdo->expects($this->once())->method('prepare')->with($sql)->willReturn($this->statement);
-        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPdo);
-
-        $this->assertSame(
-            [$data[0][$column], $data[1][$column]],
-            $db->getColumnFromAllRows($sql, $params, $column)
-        );
-    }
-
-    public function testGetLastInsertId()
+    public function testGetLastInsertId(): void
     {
         $id = '1234';
-        $this->pdo->expects($this->once())->method('lastInsertId')->willReturn($id);
-        $db = new SimpleDatabase($this->pdo, $this->logger);
-        $this->assertSame($id, $db->getLastInsertId());
+
+        $this->pdoFactory->expects(self::once())->method('getPdo')->with()->willReturn($this->pdo);
+        $this->pdo->expects(static::once())->method('lastInsertId')->willReturn($id);
+
+        $db = new SimpleDatabase($this->pdoFactory, $this->logger);
+
+        static::assertSame($id, $db->getLastInsertId());
     }
 
-    public function testGetLastInsertIdWithReadPdo()
+    public function testTransaction(): void
     {
-        $id = '1234';
-        $this->pdo->expects($this->once())->method('lastInsertId')->willReturn($id);
+        $this->pdoFactory->expects(static::exactly(3))->method('getPdo')->willReturn($this->pdo);
+        $this->pdo->expects(static::exactly(3))->method('prepare')->willReturn($this->statement);
+        $this->statement->expects(static::exactly(3))->method('execute')->willReturn(true);
 
-        $readPdo = $this->createMock(PDO::class);
-        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPdo);
-
-        $this->assertSame($id, $db->getLastInsertId());
-    }
-
-    public function testTransaction()
-    {
-        $this->pdo->expects($this->exactly(3))->method('prepare')->willReturn($this->statement);
-        $this->statement->expects($this->exactly(3))->method('execute')->willReturn(true);
-
-        $db = new SimpleDatabase($this->pdo, $this->logger);
+        $db = new SimpleDatabase($this->pdoFactory, $this->logger);
         $db->startTransaction();
         $db->commitTransaction();
         $db->rollbackTransaction();
-    }
-
-    public function testTransactionWithReadPdo()
-    {
-        $this->pdo->expects($this->exactly(3))->method('prepare')->willReturn($this->statement);
-        $this->statement->expects($this->exactly(3))->method('execute')->willReturn(true);
-
-        $readPdo = $this->createMock(PDO::class);
-        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPdo);
-        $db->startTransaction();
-        $db->commitTransaction();
-        $db->rollbackTransaction();
-    }
-
-    public function testExecuteQueryWithDifferentQueries()
-    {
-        $insert = "INSERT INTO `users` VALUES (1, 'admin', 'password')";
-        $update = "UPDATE `users` SET `password`='admin1' WHERE `id`=1";
-        $delete = "DELETE FROM `users` WHERE `id`=1";
-        $select = "SELECT * FROM `users`";
-        $replace = "REPLACE INTO `users` VALUES (1, 'admin', 'password')";
-        $other1 = "START TRANSACTION";
-        $other2 = "SET foreign_key_checks=0";
-        $multiLineQuery = "
-            SELECT 
-                *
-            FROM `users`
-        ";
-        $lowercase = "select * from `users`";
-
-        $statement = $this->createMock(PDOStatementMock::class);
-        $statement->expects($this->exactly(9))->method('execute')->willReturn(true);
-
-        $readPDO = $this->createMock(PDOMock::class);
-        $readPDO->expects($this->exactly(3))->method('prepare')->willReturn($statement);
-        $this->pdo->expects($this->exactly(6))->method('prepare')->willReturn($statement);
-
-        $db = new SimpleDatabase($this->pdo, $this->logger, false, $readPDO);
-        $db->executeQuery($insert);
-        $db->executeQuery($update);
-        $db->executeQuery($delete);
-        $db->executeQuery($select);
-        $db->executeQuery($replace);
-        $db->executeQuery($other1);
-        $db->executeQuery($other2);
-        $db->executeQuery($multiLineQuery);
-        $db->executeQuery($lowercase);
     }
 }
