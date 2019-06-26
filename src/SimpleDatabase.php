@@ -328,7 +328,7 @@ class SimpleDatabase
         } elseif ($item === null) {
             return 'NULL';
         } else {
-            return $this->simplePdo->getPdo()->quote($item);
+            return $this->simplePdo->getPdo()->quote((string)$item);
         }
     }
 
