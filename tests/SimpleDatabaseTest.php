@@ -1,11 +1,12 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Assertis\SimpleDatabase;
 
 use PDO;
-use PHPUnit_Framework_MockObject_MockObject;
-use PHPUnit_Framework_TestCase;
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Test\PDOMock;
 use Test\PDOStatementMock;
@@ -13,26 +14,26 @@ use Test\PDOStatementMock;
 /**
  * @author Michał Tatarynowicz <michal@assertis.co.uk>
  */
-class SimpleDatabaseTest extends PHPUnit_Framework_TestCase
+class SimpleDatabaseTest extends TestCase
 {
     /**
-     * @var PDO|PHPUnit_Framework_MockObject_MockObject
+     * @var PDO|MockObject
      */
     private $pdo;
     /**
-     * @var SimplePdoFactory|PHPUnit_Framework_MockObject_MockObject
+     * @var SimplePdoFactory|MockObject
      */
     private $pdoFactory;
     /**
-     * @var LoggerInterface|PHPUnit_Framework_MockObject_MockObject
+     * @var LoggerInterface|MockObject
      */
     private $logger;
     /**
-     * @var PDOStatementMock|PHPUnit_Framework_MockObject_MockObject
+     * @var PDOStatementMock|MockObject
      */
     private $statement;
 
-    public function setUp()
+    public function setUp(): void
     {
         $this->pdo = $this->createMock(PDOMock::class);
         $this->pdoFactory = $this->createMock(SimplePdoFactory::class);
@@ -69,6 +70,23 @@ class SimpleDatabaseTest extends PHPUnit_Framework_TestCase
 
         $db = new SimpleDatabase($this->pdoFactory, $this->logger);
         $db->executeQuery($sql, $params);
+    }
+
+    public function testExecThrowsExceptionOnError(): void
+    {
+        $sql = 'SELECT field FROM atable WHERE foo > :foo;';
+        $effectiveSql = 'SELECT field FROM atable WHERE foo > \'bar\';';
+        $params = ['foo' => 'bar'];
+
+        $this->pdoFactory->expects(self::once())->method('getPdo')->with($sql)->willReturn($this->pdo);
+        $this->pdo->expects(static::once())->method('exec')->with($effectiveSql)->willReturn(false);
+        $this->pdo->expects(static::once())->method('errorInfo')->willReturn(['error', 1, 'error']);
+        $this->logger->expects(static::once())->method('error');
+
+        $this->expectException(SimpleDatabaseExecuteException::class);
+
+        $db = new SimpleDatabase($this->pdoFactory, $this->logger);
+        $db->exec($sql, $params);
     }
 
     public function testGetColumn(): void

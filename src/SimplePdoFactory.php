@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Assertis\SimpleDatabase;
@@ -11,64 +12,63 @@ use PDOException;
  */
 class SimplePdoFactory
 {
-    private const MYSQL_ERROR_DISCONNECTED = 2006;
-
     /**
      * @var callable
      */
-    private $masterPdoFactory;
+    private $writePdoFactory;
     /**
      * @var PDO|null
      */
-    private $masterPdo;
+    private $writePdo;
     /**
-     * @var callable|null
+     * @var callable
      */
-    private $slavePdoFactory;
+    private $readPdoFactory;
     /**
      * @var PDO|null
      */
-    private $slavePdo;
+    private $readPdo;
 
-    public function __construct(callable $masterPdoFactory, ?callable $slavePdoFactory)
+    public function __construct(callable $writePdoFactory, ?callable $readPdoFactory)
     {
-        $this->masterPdoFactory = $masterPdoFactory;
-        $this->slavePdoFactory = $slavePdoFactory;
+        $this->writePdoFactory = $writePdoFactory;
+        $this->readPdoFactory = $readPdoFactory;
     }
 
     public function getPdo(string $sql = null): PDO
     {
         $isSelect = $sql && stripos(trim($sql), 'SELECT') === 0;
 
-        return $isSelect ? $this->getSlavePdo() : $this->getMasterPdo();
+        return $isSelect ? $this->getReadPdo() : $this->getWritePdo();
     }
 
-    public function getMasterPdo(): PDO
+    public function getWritePdo(): PDO
     {
-        if (!$this->masterPdo) {
-            $this->masterPdo = ($this->masterPdoFactory)();
+        if (!isset($this->writePdo)) {
+            $this->writePdo = ($this->writePdoFactory)();
         }
 
-        return $this->masterPdo;
+        return $this->writePdo;
     }
 
-    public function getSlavePdo(): PDO
+    public function getReadPdo()
     {
-        if (!$this->slavePdoFactory) {
-            return $this->getMasterPdo();
+        if (!isset($this->readPdoFactory)) {
+            return $this->getWritePdo();
         }
 
-        if (!$this->slavePdo) {
-            $this->slavePdo = ($this->slavePdoFactory)();
+        if (!isset($this->readPdo)) {
+            $this->readPdo = ($this->readPdoFactory)();
         }
 
-        return $this->slavePdo;
+        return $this->readPdo;
     }
 
     public function isDisconnected(PDO $pdo): bool
     {
         try {
             $pdo->query('SELECT 1')->fetchAll();
+
             return false;
         } catch (PDOException $exception) {
             return true;
@@ -81,14 +81,32 @@ class SimplePdoFactory
             return false;
         }
 
-        if ($this->masterPdo && $this->masterPdo === $pdo) {
-            $this->masterPdo = ($this->masterPdoFactory)();
+        if ($this->writePdo && $this->writePdo === $pdo) {
+            $this->writePdo = ($this->writePdoFactory)();
         }
 
-        if ($this->slavePdo && $this->slavePdo === $pdo) {
-            $this->slavePdo = ($this->slavePdoFactory)();
+        if ($this->readPdo && $this->readPdo === $pdo) {
+            $this->readPdo = ($this->readPdoFactory)();
         }
 
         return true;
+    }
+
+    /**
+     * @return PDO
+     * @deprecated Please use SimplePdoFactory::getWritePdo
+     */
+    public function getMasterPdo(): PDO
+    {
+        return $this->getWritePdo();
+    }
+
+    /**
+     * @return PDO
+     * @deprecated Please use SimplePdoFactory::getReadPdo
+     */
+    public function getSlavePdo(): PDO
+    {
+        return $this->getReadPdo();
     }
 }

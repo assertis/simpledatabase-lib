@@ -8,7 +8,9 @@
     }
   ],
   "autoload": {
-    "psr-4": {"Assertis\\SimpleDatabase\\": "src"}
+    "psr-4": {
+      "Assertis\\SimpleDatabase\\": "src"
+    }
   },
   "extra": {
     "branch-alias": {
@@ -17,11 +19,11 @@
   },
   "require": {
     "ext-pdo": "*",
-    "php": "^5.5 | ^7.0",
-    "psr/log": "^1.0"
+    "php": "^7.3.0",
+    "psr/log": "^1.1.4"
   },
   "require-dev": {
-    "symfony/var-dumper": "^3.3",
-    "phpunit/phpunit": "^5.5"
+    "symfony/var-dumper": "^v2.6.0",
+    "phpunit/phpunit": "^9.5.4"
   }
 }

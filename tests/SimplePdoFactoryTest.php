@@ -1,102 +1,139 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Assertis\SimpleDatabase;
 
 use PDO;
-use PHPUnit_Framework_MockObject_MockObject;
-use PHPUnit_Framework_TestCase;
+use PDOException;
+use PDOStatement;
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
 use Test\PDOMock;
 
 /**
  * @author Michał Tatarynowicz <michal@assertis.co.uk>
  */
-class SimplePdoFactoryTest extends PHPUnit_Framework_TestCase
+class SimplePdoFactoryTest extends TestCase
 {
     /**
-     * @var PDO|PHPUnit_Framework_MockObject_MockObject
+     * @var PDO|MockObject
      */
-    private $masterPdo;
+    private $writePdo;
     /**
      * @var callable
      */
-    private $masterPdoFactory;
+    private $writePdoFactory;
     /**
-     * @var PDO|PHPUnit_Framework_MockObject_MockObject
+     * @var bool
      */
-    private $slavePdo;
+    private $writePdoConnected = true;
+    /**
+     * @var PDO|MockObject
+     */
+    private $readPdo;
     /**
      * @var callable
      */
-    private $slavePdoFactory;
+    private $readPdoFactory;
+    /**
+     * @var bool
+     */
+    private $readPdoConnected = true;
 
-    public function setUp()
+    public function setUp(): void
     {
-        $this->masterPdoFactory = function () {
-            return $this->masterPdo = $this->createMock(PDOMock::class);
+        parent::setUp();
+
+        $this->writePdoFactory = function () {
+            return $this->writePdo = $this->getMockPdo($this->writePdoConnected);
         };
 
-        $this->slavePdoFactory = function () {
-            return $this->slavePdo = $this->createMock(PDOMock::class);
+        $this->readPdoFactory = function () {
+            return $this->readPdo = $this->getMockPdo($this->readPdoConnected);
         };
+    }
+
+    private function getMockPdo(bool $connected): MockObject
+    {
+        $pdo = $this->createMock(PDOMock::class);
+
+        if ($connected) {
+            $statement = $this->createMock(PDOStatement::class);
+            $statement->method('fetchAll')->willReturn([]);
+            $pdo->method('query')->willReturn($statement);
+        } else {
+            $pdo->method('query')->willThrowException(new PDOException());
+        }
+
+        return $pdo;
     }
 
     public function testGetPdo()
     {
-        $db = new SimplePdoFactory($this->masterPdoFactory, $this->slavePdoFactory);
+        $db = new SimplePdoFactory($this->writePdoFactory, $this->readPdoFactory);
 
-        $master = $db->getMasterPdo();
-        $slave = $db->getSlavePdo();
+        $writeReplica = $db->getWritePdo();
+        $readReplica = $db->getReadPdo();
 
-        static::assertNotSame($master, $slave);
+        static::assertNotSame($writeReplica, $readReplica);
 
-        static::assertSame($master, $db->getPdo());
-        static::assertSame($master, $db->getMasterPdo());
-        static::assertSame($slave, $db->getSlavePdo());
+        static::assertSame($writeReplica, $db->getPdo());
+        static::assertSame($writeReplica, $db->getWritePdo());
+        static::assertSame($readReplica, $db->getReadPdo());
 
-        static::assertSame($slave, $db->getPdo('SELECT * FROM `users`;'));
-        static::assertSame($slave, $db->getPdo('  select * from `users` '));
-        static::assertSame($slave, $db->getPdo('
+        static::assertSame($readReplica, $db->getPdo('SELECT * FROM `users`;'));
+        static::assertSame($readReplica, $db->getPdo('  select * from `users` '));
+        static::assertSame(
+            $readReplica,
+            $db->getPdo(
+                '
             SELECT 
                 *
             FROM `users`
-        '));
-        static::assertSame($master, $db->getPdo('INSERT INTO `users` VALUES (1,2)'));
-        static::assertSame($master, $db->getPdo("UPDATE `users` SET `password`='admin1' WHERE `id`=1"));
-        static::assertSame($master, $db->getPdo('DELETE FROM `users` WHERE `id`=1'));
-        static::assertSame($master, $db->getPdo("REPLACE INTO `users` VALUES (1, 'admin', 'password')"));
-        static::assertSame($master, $db->getPdo('SET foreign_key_checks=0'));
+        '
+            )
+        );
+        static::assertSame($writeReplica, $db->getPdo('INSERT INTO `users` VALUES (1,2)'));
+        static::assertSame($writeReplica, $db->getPdo("UPDATE `users` SET `password`='admin1' WHERE `id`=1"));
+        static::assertSame($writeReplica, $db->getPdo('DELETE FROM `users` WHERE `id`=1'));
+        static::assertSame($writeReplica, $db->getPdo("REPLACE INTO `users` VALUES (1, 'admin', 'password')"));
+        static::assertSame($writeReplica, $db->getPdo('SET foreign_key_checks=0'));
     }
 
     public function testReconnectWillFailIfNotDisconnected()
     {
-        $db = new SimplePdoFactory($this->masterPdoFactory, $this->slavePdoFactory);
-        $db->getMasterPdo();
-        $db->getSlavePdo();
-        self::assertFalse($db->reconnect($this->masterPdo));
-    }
+        $this->writePdoConnected = true;
 
-    public function testReconnectWillFailIfDifferentError()
-    {
-        $db = new SimplePdoFactory($this->masterPdoFactory, $this->slavePdoFactory);
-        $db->getMasterPdo();
-        $db->getSlavePdo();
+        $db = new SimplePdoFactory($this->writePdoFactory, $this->readPdoFactory);
+        $writeDb = $db->getWritePdo();
+        $readDb = $db->getReadPdo();
 
-        $this->masterPdo->method('errorCode')->willReturn(1234);
-
-        self::assertFalse($db->reconnect($this->masterPdo));
+        self::assertFalse($db->reconnect($this->writePdo));
+        self::assertSame($writeDb, $db->getWritePdo());
+        self::assertSame($readDb, $db->getReadPdo());
     }
 
     public function testReconnectWillCreateNewPdoInstance()
     {
-        $db = new SimplePdoFactory($this->masterPdoFactory, $this->slavePdoFactory);
-        $master = $db->getMasterPdo();
-        $slave = $db->getSlavePdo();
+        $this->writePdoConnected = false;
 
-        $this->masterPdo->method('errorCode')->willReturn(2006);
+        $db = new SimplePdoFactory($this->writePdoFactory, $this->readPdoFactory);
+        $writePdo = $db->getWritePdo();
+        $readPdo = $db->getReadPdo();
 
-        self::assertTrue($db->reconnect($this->masterPdo));
-        self::assertNotSame($master, $db->getMasterPdo());
-        self::assertSame($slave, $db->getSlavePdo());
+        self::assertTrue($db->reconnect($this->writePdo));
+        self::assertNotSame($writePdo, $db->getWritePdo());
+        self::assertSame($readPdo, $db->getReadPdo());
+    }
+
+    public function testLegacyNamesWork()
+    {
+        $db = new SimplePdoFactory($this->writePdoFactory, $this->readPdoFactory);
+        $writePdo = $db->getWritePdo();
+        $readPdo = $db->getReadPdo();
+
+        self::assertSame($writePdo, $db->getMasterPdo());
+        self::assertSame($readPdo, $db->getSlavePdo());
     }
 }

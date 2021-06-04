@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Assertis\SimpleDatabase;
@@ -42,20 +43,20 @@ class SimpleDatabase
         $this->queryLogger = $queryLogger;
     }
 
-    /**
-     * @param string $sql
-     * @param array $params
-     *
-     * @return string|array
-     */
-    public static function resolveQuery($sql, $params)
+    public static function resolveQuery(string $sql, array $params): string
     {
-        $keys = array_map(static function ($key) {
-            return ':' . $key;
-        }, array_keys($params));
-        $values = array_map(static function ($value) {
-            return "'{$value}'";
-        }, array_values($params));
+        $keys = array_map(
+            static function ($key) {
+                return ':' . $key;
+            },
+            array_keys($params)
+        );
+        $values = array_map(
+            static function ($value) {
+                return "'{$value}'";
+            },
+            array_values($params)
+        );
 
         return str_replace($keys, $values, $sql);
     }
@@ -100,15 +101,57 @@ class SimpleDatabase
         return $query;
     }
 
-    private function logQuery(string $sql, array $params): void
+    /**
+     * @param string $sql
+     * @param array $params
+     * @param int $retries
+     * @throws SimpleDatabaseExecuteException
+     */
+    public function exec(string $sql, array $params = [], int $retries = 3): void
     {
-        if (!$this->queryLogger) {
+        $pdo = $this->simplePdo->getPdo($sql);
+
+        $this->logQuery($sql, $params);
+
+        $errorInfo = null;
+
+        try {
+            if ($pdo->exec(self::resolveQuery($sql, $params)) === false) {
+                $errorInfo = $pdo->errorInfo();
+            }
+        } catch (PDOException $ex) {
+            if ($retries > 0) {
+                sleep(1);
+                if ($this->simplePdo->reconnect($pdo)) {
+                    $this->exec($sql, $params, $retries - 1);
+
+                    return;
+                }
+            }
+
+            $errorInfo = $ex->errorInfo;
+        }
+
+        if (!$errorInfo) {
             return;
         }
 
-        $this->queryLogger->info(sprintf(
-            self::resolveQuery($sql, $params)
-        ));
+        $this->logQueryError($sql, $params, $errorInfo);
+
+        throw new SimpleDatabaseExecuteException($errorInfo, $sql, $params);
+    }
+
+    private function logQuery(string $sql, array $params): void
+    {
+        if (!isset($this->queryLogger)) {
+            return;
+        }
+
+        $this->queryLogger->info(
+            sprintf(
+                self::resolveQuery($sql, $params)
+            )
+        );
     }
 
     private function logQueryError(string $sql, array $params, array $errorInfo): void
@@ -290,9 +333,15 @@ class SimpleDatabase
      */
     private function getInsertKeys(array $data): string
     {
-        return implode(',', array_map(static function ($identifier) {
-            return '`' . str_replace('.', '`.`', $identifier) . '`';
-        }, array_keys($data)));
+        return implode(
+            ',',
+            array_map(
+                static function ($identifier) {
+                    return '`' . str_replace('.', '`.`', $identifier) . '`';
+                },
+                array_keys($data)
+            )
+        );
     }
 
     /**
@@ -302,9 +351,15 @@ class SimpleDatabase
      */
     private function getInsertPlaceholders(array $data): string
     {
-        return implode(',', array_map(static function ($key) {
-            return ':' . $key;
-        }, array_keys($data)));
+        return implode(
+            ',',
+            array_map(
+                static function ($key) {
+                    return ':' . $key;
+                },
+                array_keys($data)
+            )
+        );
     }
 
     /**
@@ -500,7 +555,7 @@ class SimpleDatabase
 
     /**
      * @param string $prefix
-     * @return array[]
+     * @return string[]
      * @throws SimpleDatabaseExecuteException
      */
     public function listTablesStartsWith(string $prefix): array
@@ -515,9 +570,12 @@ class SimpleDatabase
      */
     public function listTablesNotStartingWith(string $prefix): array
     {
-        return array_filter($this->listAllTables(), static function ($tableName) use ($prefix) {
-            return strpos($tableName, $prefix) !== 0;
-        });
+        return array_filter(
+            $this->listAllTables(),
+            static function ($tableName) use ($prefix) {
+                return strpos($tableName, $prefix) !== 0;
+            }
+        );
     }
 
     /**
@@ -534,7 +592,7 @@ class SimpleDatabase
      *
      * @throws SimpleDatabaseExecuteException
      */
-    public function dropTable($tableName): void
+    public function dropTable(string $tableName): void
     {
         $this->executeQuery("DROP TABLE `{$tableName}`;");
     }
