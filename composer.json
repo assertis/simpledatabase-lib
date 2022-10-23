@@ -9,7 +9,8 @@
   ],
   "autoload": {
     "psr-4": {
-      "Assertis\\SimpleDatabase\\": "src"
+      "Assertis\\SimpleDatabase\\": "src",
+      "Tests\\Assertis\\SimpleDatabase\\": "tests"
     }
   },
   "extra": {
@@ -19,11 +20,12 @@
   },
   "require": {
     "ext-pdo": "*",
-    "php": "^7.3.0",
-    "psr/log": "^1.1.4"
+    "php": "^5.5 | ^7.0 | ^8.0",
+    "psr/log": "^1.0 | ^2.0 | ^3.0"
   },
   "require-dev": {
-    "symfony/var-dumper": "^v2.6.0",
-    "phpunit/phpunit": "^9.5.4"
+    "roave/security-advisories": "dev-latest",
+    "phpunit/phpunit": "^9.5",
+    "symfony/var-dumper": "*"
   }
 }

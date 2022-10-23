@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Assertis\SimpleDatabase;
+namespace Tests\Assertis\SimpleDatabase;
 
+use Assertis\SimpleDatabase\SimplePdoFactory;
 use PDO;
 use PDOException;
 use PDOStatement;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Test\PDOMock;
 
 /**
  * @author Michał Tatarynowicz <michal@assertis.co.uk>
@@ -69,7 +69,7 @@ class SimplePdoFactoryTest extends TestCase
         return $pdo;
     }
 
-    public function testGetPdo()
+    public function testGetPdo(): void
     {
         $db = new SimplePdoFactory($this->writePdoFactory, $this->readPdoFactory);
 
@@ -101,7 +101,7 @@ class SimplePdoFactoryTest extends TestCase
         static::assertSame($writeReplica, $db->getPdo('SET foreign_key_checks=0'));
     }
 
-    public function testReconnectWillFailIfNotDisconnected()
+    public function testReconnectWillFailIfNotDisconnected(): void
     {
         $this->writePdoConnected = true;
 
@@ -114,7 +114,7 @@ class SimplePdoFactoryTest extends TestCase
         self::assertSame($readDb, $db->getReadPdo());
     }
 
-    public function testReconnectWillCreateNewPdoInstance()
+    public function testReconnectWillCreateNewPdoInstance(): void
     {
         $this->writePdoConnected = false;
 
@@ -127,7 +127,7 @@ class SimplePdoFactoryTest extends TestCase
         self::assertSame($readPdo, $db->getReadPdo());
     }
 
-    public function testLegacyNamesWork()
+    public function testLegacyNamesWork(): void
     {
         $db = new SimplePdoFactory($this->writePdoFactory, $this->readPdoFactory);
         $writePdo = $db->getWritePdo();

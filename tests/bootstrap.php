@@ -1,6 +1,8 @@
 <?php
 
-namespace Test;
+namespace Tests\Assertis\SimpleDatabase;
+
+use PDO;
 
 $possibleAutoloadFiles = [
     __DIR__.'/../vendor/autoload.php',
@@ -236,7 +238,7 @@ class PDOLoggerStatement extends \PDOStatement
         return $this->results[0];
     }
 
-    public function fetchAll($how = null, $class_name = null, $ctor_args = null)
+    public function fetchAll($mode = PDO::FETCH_BOTH, $fetch_argument = null, ...$args): array
     {
         return $this->results;
     }

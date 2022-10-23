@@ -2,14 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Assertis\SimpleDatabase;
+namespace Tests\Assertis\SimpleDatabase;
 
+use Assertis\SimpleDatabase\NoRecordsFoundException;
+use Assertis\SimpleDatabase\SimpleDatabase;
+use Assertis\SimpleDatabase\SimpleDatabaseConstraintException;
+use Assertis\SimpleDatabase\SimpleDatabaseExecuteException;
+use Assertis\SimpleDatabase\SimplePdoFactory;
 use PDO;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
-use Test\PDOMock;
-use Test\PDOStatementMock;
 
 /**
  * @author Michał Tatarynowicz <michal@assertis.co.uk>
@@ -41,6 +44,9 @@ class SimpleDatabaseTest extends TestCase
         $this->logger = $this->createMock(LoggerInterface::class);
     }
 
+    /**
+     * @throws SimpleDatabaseExecuteException
+     */
     public function testExecuteQuery(): void
     {
         $sql = 'SQL';
@@ -89,6 +95,10 @@ class SimpleDatabaseTest extends TestCase
         $db->exec($sql, $params);
     }
 
+    /**
+     * @throws NoRecordsFoundException
+     * @throws SimpleDatabaseExecuteException
+     */
     public function testGetColumn(): void
     {
         $sql = 'SQL';
@@ -106,6 +116,10 @@ class SimpleDatabaseTest extends TestCase
         static::assertSame($data[0], $db->getColumn($sql, $params));
     }
 
+    /**
+     * @throws NoRecordsFoundException
+     * @throws SimpleDatabaseExecuteException
+     */
     public function testGetColumnWithOptional(): void
     {
         $sql = 'SQL';
@@ -122,6 +136,10 @@ class SimpleDatabaseTest extends TestCase
         static::assertSame($data[0], $db->getColumn($sql, [], 0, true));
     }
 
+    /**
+     * @throws NoRecordsFoundException
+     * @throws SimpleDatabaseExecuteException
+     */
     public function testGetColumnThrowsExceptionOnNoResults(): void
     {
         $sql = 'SQL';
@@ -138,6 +156,10 @@ class SimpleDatabaseTest extends TestCase
         $db->getColumn($sql, $params);
     }
 
+    /**
+     * @throws NoRecordsFoundException
+     * @throws SimpleDatabaseExecuteException
+     */
     public function testGetRow(): void
     {
         $sql = 'SQL';
@@ -155,6 +177,10 @@ class SimpleDatabaseTest extends TestCase
         static::assertSame($data, $db->getRow($sql, $params));
     }
 
+    /**
+     * @throws NoRecordsFoundException
+     * @throws SimpleDatabaseExecuteException
+     */
     public function testGetRowThrowsExceptionOnNoResults(): void
     {
         $sql = 'SQL';
@@ -171,6 +197,9 @@ class SimpleDatabaseTest extends TestCase
         $db->getRow($sql, $params);
     }
 
+    /**
+     * @throws SimpleDatabaseExecuteException
+     */
     public function testGetAll(): void
     {
         $sql = 'SELECT * FROM `table`';
@@ -188,6 +217,9 @@ class SimpleDatabaseTest extends TestCase
         static::assertSame($data, $db->getAll($sql, $params, $fetchMode));
     }
 
+    /**
+     * @throws SimpleDatabaseExecuteException
+     */
     public function testListTablesStartsWith(): void
     {
         $prefix = 'pref';
@@ -204,6 +236,9 @@ class SimpleDatabaseTest extends TestCase
         static::assertSame($tables, $db->listTablesStartsWith($prefix));
     }
 
+    /**
+     * @throws SimpleDatabaseExecuteException
+     */
     public function testListAllTables(): void
     {
         $sql = "SHOW TABLES LIKE '%';";
@@ -219,6 +254,9 @@ class SimpleDatabaseTest extends TestCase
         static::assertSame($tables, $db->listAllTables());
     }
 
+    /**
+     * @throws SimpleDatabaseExecuteException
+     */
     public function testDuplicateTableWithData(): void
     {
         $create = 'CREATE TABLE IF NOT EXISTS `new_table` LIKE `table`;';
@@ -249,6 +287,9 @@ class SimpleDatabaseTest extends TestCase
         $db->duplicateTable('table', 'new_table', true);
     }
 
+    /**
+     * @throws SimpleDatabaseExecuteException
+     */
     public function testDuplicateTableWithoutData(): void
     {
         $sql = 'CREATE TABLE IF NOT EXISTS `new_table` LIKE `table`;';
@@ -261,6 +302,9 @@ class SimpleDatabaseTest extends TestCase
         $db->duplicateTable('table', 'new_table');
     }
 
+    /**
+     * @throws SimpleDatabaseExecuteException
+     */
     public function testDropTable(): void
     {
         $sql = 'DROP TABLE `new_table`;';
@@ -273,6 +317,9 @@ class SimpleDatabaseTest extends TestCase
         $db->dropTable('new_table');
     }
 
+    /**
+     * @throws SimpleDatabaseExecuteException
+     */
     public function testGetColumnFromAllRows(): void
     {
         $sql = 'SQL';
@@ -305,6 +352,9 @@ class SimpleDatabaseTest extends TestCase
         static::assertSame($id, $db->getLastInsertId());
     }
 
+    /**
+     * @throws SimpleDatabaseExecuteException
+     */
     public function testTransaction(): void
     {
         $this->pdoFactory->expects(static::exactly(3))->method('getPdo')->willReturn($this->pdo);
