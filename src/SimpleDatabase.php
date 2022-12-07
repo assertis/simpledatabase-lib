@@ -159,10 +159,10 @@ class SimpleDatabase
         $message = sprintf(
             'Could not execute query %s with parameters %s: %s/%d - %s.',
             $sql,
-            json_encode($params),
+            json_encode($params, JSON_THROW_ON_ERROR),
             $errorInfo[0],
             $errorInfo[1],
-            $errorInfo[2]
+            $errorInfo[2] ?? '(blank)',
         );
 
         $this->getLogger()->error($message);
@@ -174,11 +174,11 @@ class SimpleDatabase
      * @param int $columnId
      * @param bool $optional
      *
-     * @return string
+     * @return string|int|null
      * @throws NoRecordsFoundException
      * @throws SimpleDatabaseExecuteException
      */
-    public function getColumn(string $sql, array $params = [], int $columnId = 0, bool $optional = false): ?string
+    public function getColumn(string $sql, array $params = [], int $columnId = 0, bool $optional = false)
     {
         $query = $this->executeQuery($sql, $params);
 
