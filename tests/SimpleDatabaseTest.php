@@ -259,9 +259,12 @@ class SimpleDatabaseTest extends TestCase
      */
     public function testDuplicateTableWithData(): void
     {
-        $create = 'CREATE TABLE IF NOT EXISTS `new_table` LIKE `table`;';
+        $create   = 'CREATE TABLE IF NOT EXISTS `new_table` LIKE `table`;';
         $truncate = 'TRUNCATE `new_table`;';
-        $insert = 'INSERT INTO `new_table` SELECT * FROM `table`;';
+        $insert   = 'INSERT INTO `new_table` SELECT * FROM `table`;';
+
+        $expectedSqls = [$create, $truncate, $insert];
+        $expectedSqlsPrepare = [$create, $truncate, $insert];
 
         $statements = [
             $this->createMock(PDOStatementMock::class),
@@ -269,16 +272,26 @@ class SimpleDatabaseTest extends TestCase
             $this->createMock(PDOStatementMock::class),
         ];
 
+        // Expect exactly 3 calls to getPdo and check the SQL parameter
         $this->pdoFactory->expects(static::exactly(3))
             ->method('getPdo')
-            ->withConsecutive([$create], [$truncate], [$insert])
-            ->willReturn($this->pdo);
+            ->willReturnCallback(function ($sql) use (&$expectedSqls) {
+                // Assert that the SQL passed is what we expect, in order.
+                $expected = array_shift($expectedSqls);
+                static::assertEquals($expected, $sql, "Unexpected SQL passed to getPdo()");
+                return $this->pdo;
+            });
 
+        // Expect exactly 3 calls to prepare and check the SQL parameter
         $this->pdo->expects(static::exactly(3))
             ->method('prepare')
-            ->withConsecutive([$create], [$truncate], [$insert])
-            ->willReturnOnConsecutiveCalls($statements[0], $statements[1], $statements[2]);
+            ->willReturnCallback(function ($sql) use (&$expectedSqlsPrepare, &$statements) {
+                $expected = array_shift($expectedSqlsPrepare);
+                static::assertEquals($expected, $sql, "Unexpected SQL passed to prepare()");
+                return array_shift($statements);
+            });
 
+        // Each PDOStatementMock should execute exactly once
         $statements[0]->expects(static::once())->method('execute')->willReturn(true);
         $statements[1]->expects(static::once())->method('execute')->willReturn(true);
         $statements[2]->expects(static::once())->method('execute')->willReturn(true);
