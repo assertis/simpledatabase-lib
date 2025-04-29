@@ -31,7 +31,7 @@ class SimpleDatabase
     public function __construct(
         SimplePdoFactory $simplePdo,
         LoggerInterface $logger,
-        LoggerInterface $queryLogger = null
+        ?LoggerInterface $queryLogger = null
     ) {
         $this->simplePdo = $simplePdo;
         $this->logger = $logger;

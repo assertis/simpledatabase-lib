@@ -35,7 +35,7 @@ class SimplePdoFactory
         $this->readPdoFactory = $readPdoFactory;
     }
 
-    public function getPdo(string $sql = null): PDO
+    public function getPdo(?string $sql = null): PDO
     {
         $isSelect = $sql && stripos(trim($sql), 'SELECT') === 0;
 
