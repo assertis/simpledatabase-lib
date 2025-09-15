@@ -64,15 +64,20 @@ class SimplePdoFactory
         return $this->readPdo;
     }
 
-    public function isDisconnected(PDO $pdo): bool
+    public function isConnected(?PDO $specificPdo = null): bool
     {
         try {
-            $pdo->query('SELECT 1')->fetchAll();
+			$pdo = $specificPdo ?? $this->getReadPdo();
 
+			return $pdo->query('SELECT 1')->fetchColumn() === 1;
+        } catch (PDOException) {
             return false;
-        } catch (PDOException $exception) {
-            return true;
         }
+    }
+
+    public function isDisconnected(PDO $pdo): bool
+    {
+		return !$this->isConnected($pdo);
     }
 
     public function reconnect(PDO $pdo): bool
